@@ -1,0 +1,2379 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Generador UTI - Entrada/Salida</title>
+    <link href="fonts/inter.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #0066ff;
+            --secondary: #0f172a;
+            --accent: #00f2ff;
+            --bg: #f8fafc;
+            --surface: #ffffff;
+            --danger: #ef4444;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --info: #3b82f6;
+            --radius: 16px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--secondary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 10px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            background: var(--surface);
+            border-radius: var(--radius);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* Pantalla de acceso (login) */
+        .access-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #0a0e1a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            padding: 20px;
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px);}
+            to { opacity: 1; transform: translateY(0);}
+        }
+        .login-card {
+            position: relative;
+            background: #1e293b;
+            border: 1px solid #334155;
+            width: 100%;
+            max-width: 380px;
+            border-radius: 20px;
+            padding: 36px 32px 24px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            color: #f1f5f9;
+            animation: fadeInUp 0.3s ease;
+        }
+        .login-gear {
+            position: absolute;
+            top: 18px;
+            right: 18px;
+            background: none;
+            border: none;
+            color: #94a3b8;
+            cursor: pointer;
+            padding: 4px;
+            display: flex;
+            transition: 0.3s;
+        }
+        .login-gear:hover { color: #fff; transform: rotate(45deg); }
+        .login-logo { text-align: center; margin-bottom: 24px; }
+        .login-logo .cube { width: 54px; height: 54px; }
+        .login-logo h1 {
+            font-size: 1.7rem;
+            font-weight: 800;
+            letter-spacing: 1px;
+            margin-top: 10px;
+            color: #fff;
+        }
+        .login-logo p { color: #94a3b8; font-size: 0.85rem; margin-top: 4px; }
+        .login-field { margin-bottom: 18px; }
+        .login-field label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #cbd5e1;
+            margin-bottom: 8px;
+        }
+        .login-input-wrap { position: relative; }
+        .login-input-wrap .ico {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #64748b;
+            display: flex;
+        }
+        .login-input {
+            width: 100%;
+            padding: 12px 14px 12px 42px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            color: #f1f5f9;
+            font-size: 1rem;
+            font-family: inherit;
+            transition: 0.2s;
+        }
+        .login-input::placeholder { color: #64748b; }
+        .login-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.25);
+        }
+        .login-lang #langSelectMount { display: block; }
+        .login-lang .i18n-select {
+            width: 100%;
+            padding: 12px 14px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            color: #f1f5f9;
+            font-size: 1rem;
+            font-family: inherit;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .login-lang .i18n-select:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.25);
+        }
+        .access-overlay.theme-light .login-lang .i18n-select {
+            background: #f1f5f9;
+            border-color: #cbd5e1;
+            color: #0f172a;
+        }
+        .login-btn {
+            width: 100%;
+            padding: 13px;
+            margin-top: 6px;
+            background: #3b82f6;
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .login-btn:hover { background: #2563eb; }
+        .login-btn:active { transform: scale(0.99); }
+        .login-error {
+            color: #f87171;
+            font-size: 0.82rem;
+            text-align: center;
+            margin-top: 14px;
+            display: none;
+            padding: 9px;
+            background: rgba(239,68,68,0.12);
+            border: 1px solid rgba(239,68,68,0.3);
+            border-radius: 8px;
+        }
+        .login-aviso {
+            margin-top: 22px;
+            padding: 14px 16px;
+            background: rgba(239,68,68,0.10);
+            border-left: 4px solid #ef4444;
+            border-radius: 12px;
+            font-size: 0.78rem;
+            line-height: 1.5;
+            color: #e2e8f0;
+            text-align: left;
+        }
+        .login-aviso .ico { color: #ef4444; vertical-align: middle; margin-right: 6px; }
+        .login-aviso strong { color: #ef4444; font-weight: 800; }
+        .login-credit {
+            text-align: center;
+            margin-top: 18px;
+            font-size: 11px;
+            color: #475569;
+        }
+        /* Tema claro del login (botón ⚙) */
+        .access-overlay.theme-light { background: #e2e8f0; }
+        .access-overlay.theme-light .login-card { background: #fff; color: #1e293b; border-color: #e2e8f0; box-shadow: 0 20px 50px rgba(0,0,0,0.18); }
+        .access-overlay.theme-light .login-logo h1 { color: #0f172a; }
+        .access-overlay.theme-light .login-logo p,
+        .access-overlay.theme-light .login-field label { color: #475569; }
+        .access-overlay.theme-light .login-gear { color: #64748b; }
+        .access-overlay.theme-light .login-gear:hover { color: #0f172a; }
+        .access-overlay.theme-light .login-input { background: #f8fafc; border-color: #e2e8f0; color: #1e293b; }
+        .access-overlay.theme-light .login-input::placeholder { color: #94a3b8; }
+        .access-overlay.theme-light .login-aviso { color: #334155; }
+        .access-overlay.theme-light .login-credit { color: #94a3b8; }
+        /* 04/10/2026: paso TERMINAL / ESTACIÓN tras el código de acceso */
+        .terminal-step .terminal-select {
+            width: 100%;
+            padding: 12px 14px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            color: #f1f5f9;
+            font-size: 1rem;
+            font-family: inherit;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .terminal-step .terminal-select:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.25);
+        }
+        .terminal-step .terminal-volver {
+            width: 100%;
+            margin-top: 10px;
+            padding: 10px;
+            background: transparent;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            color: #cbd5e1;
+            font-size: 0.9rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+        }
+        .terminal-step .terminal-hint { font-size: 0.78rem; color: #94a3b8; margin: -8px 0 14px; line-height: 1.4; }
+        .access-overlay.theme-light .terminal-step .terminal-select { background: #f1f5f9; border-color: #cbd5e1; color: #0f172a; }
+        .access-overlay.theme-light .terminal-step .terminal-volver { border-color: #cbd5e1; color: #475569; }
+        .access-overlay.theme-light .terminal-step .terminal-hint { color: #64748b; }
+        .terminal-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 10px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            background: rgba(59,130,246,0.15);
+            border: 1px solid rgba(59,130,246,0.5);
+            color: #bfdbfe;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        /* contenido principal inicial oculto */
+        .main-app {
+            display: none;
+        }
+
+        .header {
+            padding: 20px;
+            text-align: center;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: white;
+            border-bottom: 1px solid #334155;
+        }
+
+        .logo-container {
+            margin-bottom: 15px;
+        }
+
+        .terminal-title {
+            font-size: 22px;
+            font-weight: 800;
+            color: white;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 5px;
+            background: linear-gradient(90deg, #00f2ff, #0066ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .terminal-subtitle {
+            font-size: 14px;
+            color: #cbd5e1;
+            font-weight: 500;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .main-content {
+            padding: 20px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .welcome-screen {
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 400px;
+        }
+
+        .welcome-screen h2 {
+            font-size: 22px;
+            color: var(--secondary);
+            margin-bottom: 15px;
+            font-weight: 700;
+        }
+
+        .welcome-screen p {
+            color: #64748b;
+            margin-bottom: 30px;
+            font-size: 15px;
+            max-width: 400px;
+            line-height: 1.5;
+        }
+
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 100%;
+            max-width: 300px;
+            margin-bottom: 30px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            text-transform: uppercase;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn:active { 
+            transform: translateY(0);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-success { 
+            background: var(--success); 
+            color: white; 
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3); 
+        }
+        
+        .btn-success:hover {
+            background: #0da271;
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+        }
+        
+        .btn-danger { 
+            background: var(--danger); 
+            color: white; 
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3); 
+        }
+        
+        .btn-danger:hover {
+            background: #dc2626;
+            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
+        }
+        
+        .btn-warning { 
+            background: var(--warning); 
+            color: white; 
+        }
+        
+        .btn-warning:hover {
+            background: #d97706;
+        }
+        
+        .btn-secondary { 
+            background: white; 
+            color: var(--secondary); 
+            border: 2px solid #e2e8f0; 
+        }
+        
+        .btn-secondary:hover {
+            background: #f8fafc;
+            border-color: var(--primary);
+        }
+        
+        .btn-csv {
+            background: #2c3e50;
+            color: white;
+            border: none;
+        }
+        .btn-csv:hover {
+            background: #1e2a36;
+        }
+
+        .btn-orange {
+            background: var(--warning);
+            color: white;
+            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+        }
+        .btn-orange:hover {
+            background: #d97706;
+            box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
+        }
+
+        .reservas-btn-container {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+            max-width: 300px;
+            margin-bottom: 10px;
+        }
+        .reservas-btn-container .btn {
+            width: 100%;
+        }
+
+        /* Vista LISTA RESERVAS (pantalla completa con iframe) */
+        .reservas-view {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #0f1724;
+            z-index: 1500;
+            flex-direction: column;
+        }
+        .reservas-view.active {
+            display: flex;
+        }
+        .reservas-topbar {
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 16px;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            border-bottom: 1px solid #334155;
+        }
+        .reservas-back-btn {
+            background: var(--warning);
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+        .reservas-back-btn:hover {
+            background: #d97706;
+            transform: translateY(-1px);
+        }
+        .reservas-topbar-title {
+            color: #cbd5e1;
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        #reservasIframe {
+            flex: 1;
+            width: 100%;
+            border: none;
+        }
+
+        .links {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 20px;
+            width: 100%;
+            max-width: 300px;
+        }
+
+        .link {
+            color: var(--primary);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            padding: 10px;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+
+        .link:hover {
+            background-color: #f1f5f9;
+            transform: translateY(-1px);
+        }
+
+        /* Formularios */
+        .form-container {
+            display: none;
+            width: 100%;
+        }
+
+        .form-container.active {
+            display: block;
+        }
+
+        .form-header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .form-header h2 {
+            font-size: 18px;
+            font-weight: 800;
+            color: var(--secondary);
+            margin-bottom: 5px;
+        }
+
+        .form-header p {
+            font-size: 14px;
+            color: #64748b;
+            line-height: 1.5;
+        }
+
+        .form-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--secondary);
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f1f5f9;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-title.entrada {
+            color: var(--success);
+            border-bottom-color: var(--success);
+        }
+
+        .form-title.salida {
+            color: var(--danger);
+            border-bottom-color: var(--danger);
+        }
+
+        .form-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--secondary);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            height: 48px;
+            padding: 0 16px;
+            background: #f8fafc;
+            border: 1px solid #cbd5e1;
+            border-radius: 10px;
+            font-size: 16px;
+            color: var(--secondary);
+            appearance: none;
+            transition: all 0.2s;
+        }
+
+        /* Forzar mayúsculas en todos los campos de texto */
+        .form-group input:not([type="number"]),
+        .form-group select {
+            text-transform: uppercase;
+        }
+
+        .form-group select {
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 0.5rem center;
+            background-repeat: no-repeat;
+            background-size: 1.5em 1.5em;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(0, 102, 255, 0.1);
+            background-color: #fff;
+        }
+
+        /* Autocompletado ONU/ADR */
+        .onu-autocomplete { position: relative; }
+        .onu-suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            z-index: 50;
+            margin: 4px 0 0;
+            padding: 0;
+            list-style: none;
+            background: #fff;
+            border: 1px solid #cbd5e1;
+            border-radius: 10px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+            max-height: 260px;
+            overflow-y: auto;
+            display: none;
+        }
+        .onu-suggestions.show { display: block; }
+        .onu-suggestion {
+            padding: 10px 14px;
+            cursor: pointer;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 13px;
+            line-height: 1.35;
+        }
+        .onu-suggestion:last-child { border-bottom: none; }
+        .onu-suggestion:hover,
+        .onu-suggestion.active { background: #fef2f2; }
+        .onu-suggestion .onu-num {
+            font-weight: 700;
+            color: var(--danger);
+            margin-right: 8px;
+        }
+        .onu-suggestion .onu-clase {
+            float: right;
+            font-size: 11px;
+            font-weight: 700;
+            color: #fff;
+            background: var(--danger);
+            border-radius: 6px;
+            padding: 1px 7px;
+        }
+        .onu-suggestion .onu-desc {
+            display: block;
+            color: #475569;
+            font-size: 12px;
+            margin-top: 2px;
+        }
+        .onu-suggestion .onu-amb { margin-left: 6px; }
+        .onu-empty {
+            padding: 10px 14px;
+            color: #94a3b8;
+            font-size: 13px;
+        }
+
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px;
+            background: #f8fafc;
+            border-radius: 10px;
+            border: 1px solid #cbd5e1;
+            transition: all 0.3s ease;
+        }
+        
+        .toggle-container.cargado {
+            border-color: var(--success);
+            background: #f0f9f4;
+        }
+        
+        .toggle-container.adr {
+            border-color: var(--danger);
+            background: #fef2f2;
+        }
+        
+        .toggle-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--secondary);
+            flex: 1;
+        }
+        
+        .toggle-container.cargado .toggle-label {
+            color: var(--success);
+        }
+        
+        .toggle-container.adr .toggle-label {
+            color: var(--danger);
+        }
+        
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 52px;
+            height: 26px;
+        }
+        
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #cbd5e1;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        input:checked + .toggle-slider {
+            background-color: var(--primary);
+        }
+        
+        .toggle-container.cargado input:checked + .toggle-slider {
+            background-color: var(--success);
+        }
+        
+        .toggle-container.adr input:checked + .toggle-slider {
+            background-color: var(--danger);
+        }
+        
+        input:checked + .toggle-slider:before {
+            transform: translateX(26px);
+        }
+
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 25px;
+        }
+
+        .btn-group.form-actions {
+            flex-direction: row;
+            justify-content: space-between;
+        }
+
+        .btn-group.form-actions .btn {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .report-section {
+            display: none;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        #printableArea {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            margin-bottom: 20px;
+        }
+
+        .report-header {
+            text-align: center;
+            margin-bottom: 20px;
+            border-bottom: 1px dashed #ddd;
+            padding-bottom: 10px;
+        }
+
+        .report-header h2 {
+            font-size: 18px;
+            color: var(--secondary);
+        }
+
+        .report-header h2.entrada {
+            color: var(--success);
+        }
+
+        .report-header h2.salida {
+            color: var(--danger);
+        }
+
+        #reportTimestamp {
+            font-size: 11px;
+            color: #999;
+            margin-top: 5px;
+        }
+
+        .qr-wrapper { 
+            display: flex; 
+            justify-content: center; 
+            margin: 20px 0; 
+        }
+        
+        #qrCodeContainer img { 
+            width: 160px; 
+            height: auto; 
+            display: block; 
+        }
+
+        .data-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: #f8fafc;
+            border-radius: 8px;
+            border-left: 4px solid var(--primary);
+        }
+
+        .data-row.danger { border-left-color: var(--danger); background: #fef2f2; }
+        .data-row.success { border-left-color: var(--success); background: #f0f9f4; }
+        .data-row.warning { border-left-color: var(--warning); background: #fffbeb; }
+        .data-row.info { border-left-color: var(--info); background: #eff6ff; }
+        
+        .data-label { 
+            font-size: 11px; 
+            color: #64748b; 
+            font-weight: 700; 
+            text-transform: uppercase; 
+        }
+        
+        .data-value { 
+            font-size: 15px; 
+            font-weight: 600; 
+            color: var(--secondary); 
+            text-align: right; 
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: none;
+            font-size: 14px;
+            text-align: center;
+        }
+        
+        .alert-error { background: #fee2e2; color: #991b1b; }
+        .alert-success { background: #dcfce7; color: #166534; }
+
+        .footer {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 11px;
+            color: #94a3b8;
+            padding: 15px;
+            border-top: 1px solid #f1f5f9;
+        }
+
+        .hidden { display: none !important; }
+
+        @media (min-width: 768px) {
+            .action-buttons { flex-direction: row; }
+            .action-buttons .btn { width: 100%; }
+            .btn-group.form-actions { flex-direction: row; }
+            .data-grid { display: grid; grid-template-columns: 1fr 1fr; }
+            .data-row.full-width { grid-column: 1 / -1; }
+        }
+
+        @media print {
+            body { background: white; padding: 0; margin: 0; }
+            .container { box-shadow: none; max-width: 100%; border: none; margin: 0; padding: 0; }
+            .header, .info-bar, .btn-group, .footer, .form-container, .section-title, .action-buttons, .links { display: none !important; }
+            #printableArea { 
+                border: none; 
+                padding: 0; 
+                width: 100%; 
+                position: relative; 
+                margin: 0;
+                background: white;
+            }
+            .report-section {
+                display: block !important;
+                margin: 0;
+                padding: 0;
+            }
+            .data-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+            }
+            .data-row {
+                border: 1px solid #ddd;
+                border-left-width: 5px;
+                page-break-inside: avoid;
+                background: white !important;
+            }
+            .qr-wrapper {
+                margin: 10px 0;
+            }
+            #qrCodeContainer img {
+                max-width: 140px;
+                height: auto;
+            }
+        }
+    </style>
+</head>
+<body oncontextmenu="return false">
+    <!-- Pantalla de acceso (login) -->
+    <div id="accessOverlay" class="access-overlay">
+        <div class="login-card">
+            <button type="button" class="login-gear" title="Cambiar tema" onclick="toggleLoginTheme()">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            </button>
+
+            <div class="login-logo">
+                <svg class="cube" viewBox="0 0 64 64" aria-hidden="true">
+                    <polygon points="32,4 59,19 32,34 5,19" fill="#60a5fa"/>
+                    <polygon points="5,19 32,34 32,61 5,46" fill="#3b82f6"/>
+                    <polygon points="59,19 32,34 32,61 59,46" fill="#2563eb"/>
+                </svg>
+                <h1>UTI STOCK</h1>
+                <p>Plataforma de Gestión Unificada</p>
+            </div>
+
+            <div class="login-field login-lang">
+                <label>🌐 <span>Idioma</span></label>
+                <div id="langSelectMount"></div>
+            </div>
+
+            <form id="accessForm" onsubmit="event.preventDefault(); verificarAcceso();">
+                <div class="login-field">
+                    <label>Código</label>
+                    <div class="login-input-wrap">
+                        <span class="ico"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></span>
+                        <input type="password" id="accessCode" class="login-input" placeholder="Código" autocomplete="off">
+                    </div>
+                </div>
+
+                <button type="submit" class="login-btn">INICIAR SESIÓN</button>
+                <div id="accessError" class="login-error"></div>
+            </form>
+
+            <!-- 04/10/2026: tras el código se elige la terminal/estación de TODAS las reservas de la sesión -->
+            <form id="terminalStep" class="terminal-step" style="display:none;" onsubmit="event.preventDefault(); confirmarTerminal();">
+                <div class="login-field">
+                    <label for="terminalSelect">🏢 <span>Terminal / Estación</span></label>
+                    <div class="terminal-hint">¿En qué terminal o estación se harán las reservas? Todas las entradas y salidas de esta sesión serán para la seleccionada.</div>
+                    <select id="terminalSelect" class="terminal-select"></select>
+                </div>
+                <button type="submit" class="login-btn" id="terminalBtn">CONTINUAR</button>
+                <button type="button" class="terminal-volver" onclick="volverAlCodigo()">↩ Volver</button>
+                <div id="terminalError" class="login-error"></div>
+            </form>
+
+            <div class="login-aviso">
+                <strong><svg class="ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>AVISO:</strong> Los datos integrados no se almacenan ni se vinculan a ninguna base de datos.<br>
+                El uso de esta plataforma está restringido a usuarios autorizados. El acceso no autorizado puede acarrear acciones legales. Si no dispone de autorización, abandone la plataforma de inmediato.
+            </div>
+
+            <div class="login-credit">© UTI STOCK · F-PC</div>
+        </div>
+    </div>
+    <script>
+        // Aplica el tema guardado del login (claro/oscuro)
+        if (localStorage.getItem('uti_login_theme') === 'light') {
+            document.getElementById('accessOverlay').classList.add('theme-light');
+        }
+    </script>
+
+    <div class="container main-app" id="mainApp">
+        <div class="header">
+            <div class="logo-container">
+                <div class="terminal-title">REGISTRO UTI STOCK</div>
+                <div class="terminal-subtitle">Control de Contenedores</div>
+                <!-- 04/10/2026: terminal/estación elegida al acceder (fija para toda la sesión) -->
+                <div id="terminalBadge" class="terminal-badge" style="display:none;" title="Todas las reservas de esta sesión son para esta terminal/estación"></div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <!-- Pantalla de bienvenida -->
+            <div id="welcomeScreen" class="welcome-screen">
+                <h2>Seleccione tipo de operación</h2>
+                <p>Elija su formulario para registrar su entrada o salida de contenedores.</p>
+                
+                <div class="action-buttons">
+                    <button class="btn btn-success" onclick="showForm('entrada')">
+                        📥 GENERAR ENTRADA
+                    </button>
+                    <button class="btn btn-danger" onclick="showForm('salida')">
+                        📤 GENERAR SALIDA
+                    </button>
+                </div>
+
+                <div class="reservas-btn-container">
+                    <button class="btn btn-orange" onclick="abrirListaReservas()">
+                        📋 LISTA RESERVAS
+                    </button>
+                </div>
+
+                <div class="links">
+                    <a href="https://www.terminalconstanti.com/docs/CondicionesAccesoConstanti.pdf" target="_blank" rel="noopener" class="link">
+                        📄 Condiciones de acceso
+                    </a>
+                    <a href="https://www.google.com/maps/dir//Terminal+de+Mercaderies+de+Constant%C3%AD,+Av.+de+les+Puntes,+514,+43120+Constant%C3%AD,+Tarragona/@41.1433293,1.2602239,15z/data=!4m8!4m7!1m0!1m5!1m1!1s0x12a156e8856dd33d:0x9b489fd331f56664!2m2!1d1.1575365!2d41.1653509?entry=ttu&g_ep=EgoyMDI2MDUzMS4wIKXMDSoASAFQAw%3D%3D" target="_blank" rel="noopener" class="link">
+                        🗺️ Cómo llegar...
+                    </a>
+                </div>
+            </div>
+
+            <!-- Formulario de ENTRADA (cliente texto libre, mayúsculas automáticas) -->
+            <div id="formEntrada" class="form-container">
+                <div class="form-header">
+                    <h2>SOLICITUD DE ACCESO CONTENDOR</h2>
+                    <p>Ingrese sus datos reales en todo los campos solicitados.</p>
+                </div>
+                
+                <div class="form-title entrada">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                    REGISTRO DE ENTRADA
+                </div>
+                
+                <div id="alertBox" class="alert"></div>
+                
+                <form id="registroEntradaForm">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="clienteEntrada">Cliente</label>
+                            <input type="text" id="clienteEntrada" placeholder="Nombre del cliente / empresa" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="nombreConductorEntrada">Nombre conductor</label>
+                            <input type="text" id="nombreConductorEntrada" placeholder="Ej: JUAN PÉREZ LÓPEZ">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="matriculaVehiculoEntrada">Matrícula vehículo</label>
+                            <input type="text" id="matriculaVehiculoEntrada" placeholder="Ej: 1234ABC" maxlength="10">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="numeroContenedorEntrada">Nº Contenedor</label>
+                            <input type="text" id="numeroContenedorEntrada" placeholder="Ej: ABCD1234567" maxlength="11" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="piesEntrada">Tamaño</label>
+                            <select id="piesEntrada" required>
+                                <option value="">Seleccione tamaño...</option>
+                                <option value="20">20 PIES</option>
+                                <option value="22">22 PIES</option>
+                                <option value="24">24 PIES</option>
+                                <option value="26">26 PIES</option>
+                                <option value="30">30 PIES</option>
+                                <option value="40">40 PIES</option>
+                                <option value="45">45 PIES</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="destinoEntrada">Destino Final</label>
+                            <select id="destinoEntrada" required>
+                                <option value="">Seleccione destino...</option>
+                                <optgroup label="🌍 INTERNACIONALES">
+                                    <option value="LUBA">LUBA</option>
+                                    <option value="COLONIA">COLONIA</option>
+                                    <option value="PORTUGAL">PORTUGAL</option>
+                                </optgroup>
+                                <optgroup label="🇪🇸 NACIONALES">
+                                    <option value="SAN ROQUE">SAN ROQUE</option>
+                                    <option value="SEVILLA-LA NEGRILLA">SEVILLA-LA NEGRILLA</option>
+                                    <option value="MADRID-ABROÑIGAL">MADRID-ABROÑIGAL</option>
+                                    <option value="VIGO">VIGO</option>
+                                    <option value="BILBAO-NACIONAL">BILBAO-NACIONAL</option>
+                                    <option value="TORRELAVEGA">TORRELAVEGA</option>
+                                    <option value="PUERTOLLANO">PUERTOLLANO</option>
+                                    <option value="BILBAO">BILBAO</option>
+                                </optgroup>
+                                <optgroup label="🏭 SECTOR ESPECIAL">
+                                    <option value="BILBAO-MEDW.">BILBAO-MEDW.</option>
+                                    <option value="SEVILLA-ACOU.">SEVILLA-ACOU.</option>
+                                    <option value="ZARAGOZA-MEDW.">ZARAGOZA-MEDW.</option>
+                                </optgroup>
+                                <optgroup label="🏗️ ACCIÓN GRÚA">
+                                    <option value="MOVIMIENTO GRUA">MOVIMIENTO GRUA</option>
+                                </optgroup>
+                                <optgroup label="📋 STOCK">
+                                    <option value="STOCK CLIENTE">STOCK CLIENTE</option>
+                                    <option value="STOCK CALENTAR">STOCK CALENTAR</option>
+                                    <option value="STOCK ESPECIAL">STOCK ESPECIAL</option>
+                                    <option value="STOCK PORTUGAL">STOCK PORTUGAL</option>
+                                </optgroup>
+                            </select>
+                        </div>
+
+                        <div class="form-group" id="localizadorGroupEntrada">
+                            <label for="localizadorEntrada">Nº REFERENCIA RESERVA (opcional)</label>
+                            <input type="text" id="localizadorEntrada" placeholder="Ej: LOC123456" maxlength="20">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="taraEntrada">Tara (KG)</label>
+                            <input type="number" id="taraEntrada" placeholder="3500" min="0" max="9999" maxlength="4" value="3500" required inputmode="numeric">
+                        </div>
+
+                        <div class="toggle-container" id="cargadoToggleEntrada">
+                            <span class="toggle-label">Activar estado del contenedor cargado</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="contenedorCargadoEntrada">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+
+                        <div class="form-group" id="pesoCargaGroupEntrada" style="display: none;">
+                            <label for="pesoCargaEntrada">Peso Carga (KG)</label>
+                            <input type="number" id="pesoCargaEntrada" placeholder="Ej: 22000" min="0" max="45000" maxlength="5" inputmode="numeric">
+                        </div>
+
+                        <div class="toggle-container adr" id="adrToggleEntrada">
+                            <span class="toggle-label">Contenedor con ADR</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="tieneAdrEntrada">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+
+                        <div class="form-group" id="numeroONUGroupEntrada" style="display: none;">
+                            <label for="numeroONUEntrada" style="color: var(--danger);">Número ONU</label>
+                            <div class="onu-autocomplete">
+                                <input type="text" id="numeroONUEntrada" maxlength="4" placeholder="Ej: 1203" inputmode="numeric" autocomplete="off">
+                                <ul class="onu-suggestions" id="onuSuggestionsEntrada"></ul>
+                            </div>
+                        </div>
+
+                        <div class="form-group" id="codigoPeligroGroupEntrada" style="display: none;">
+                            <label for="codigoPeligroEntrada" style="color: var(--danger);">Clase / Código</label>
+                            <input type="text" id="codigoPeligroEntrada" placeholder="Ej: 3">
+                        </div>
+                    </div>
+
+                    <div class="btn-group form-actions">
+                        <button type="button" class="btn btn-success" onclick="generarQREntrada()">
+                            ✅ GENERAR QR
+                        </button>
+                        <button type="button" class="btn btn-warning" onclick="goBack()">
+                            ↩ ATRÁS
+                        </button>
+                        <button type="button" class="btn btn-danger" onclick="limpiarFormulario('entrada')">
+                            🗑️ BORRAR TODO
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Formulario de SALIDA (cliente ahora es texto libre y mayúsculas) -->
+            <div id="formSalida" class="form-container">
+                <div class="form-header">
+                    <h2>SOLICITUD DE SALIDA CONTENEDOR</h2>
+                    <p>Generar orden de salida.</p>
+                </div>
+                
+                <div class="form-title salida">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                        <polyline points="16 17 21 12 16 7"></polyline>
+                        <line x1="21" y1="12" x2="9" y2="12"></line>
+                    </svg>
+                    REGISTRO DE SALIDA
+                </div>
+                
+                <div id="alertBoxSalida" class="alert"></div>
+                
+                <form id="registroSalidaForm">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="clienteSalida">Cliente</label>
+                            <input type="text" id="clienteSalida" placeholder="Nombre del cliente / empresa" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="nombreConductorSalida">Nombre conductor</label>
+                            <input type="text" id="nombreConductorSalida" placeholder="Ej: JUAN PÉREZ LÓPEZ">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="matriculaVehiculoSalida">Matrícula vehículo</label>
+                            <input type="text" id="matriculaVehiculoSalida" placeholder="Ej: 1234ABC" maxlength="10">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="numeroContenedorSalida">Nº Contenedor</label>
+                            <input type="text" id="numeroContenedorSalida" placeholder="Ej: ABCD1234567" maxlength="11" required>
+                        </div>
+
+                        <div class="toggle-container" id="cargadoToggleSalida">
+                            <span class="toggle-label">Activar estado del contenedor cargado</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="contenedorCargadoSalida">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="btn-group form-actions">
+                        <button type="button" class="btn btn-success" onclick="generarQRSalida()">
+                            ✅ GENERAR QR
+                        </button>
+                        <button type="button" class="btn btn-warning" onclick="goBack()">
+                            ↩ ATRÁS
+                        </button>
+                        <button type="button" class="btn btn-danger" onclick="limpiarFormulario('salida')">
+                            🗑️ BORRAR TODO
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Sección de reporte -->
+            <div id="reportSection" class="report-section">
+                <div id="printableArea">
+                    <div class="report-header">
+                        <h2 id="reportTitle">Reporte Digital</h2>
+                        <div id="reportTimestamp" style="font-size: 11px; color: #999; margin-top: 5px;"></div>
+                    </div>
+
+                    <div class="qr-wrapper">
+                        <div id="qrCodeContainer"></div>
+                    </div>
+
+                    <div class="data-grid">
+                        <!-- 04/10/2026: terminal/estación de la reserva (la elegida al acceder; también va en el QR) -->
+                        <div class="data-row full-width" id="repTerminalBox">
+                            <span class="data-label">Terminal / Estación</span>
+                            <span class="data-value" id="repTerminal">-</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="data-label">Cliente</span>
+                            <span class="data-value" id="repCliente">-</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="data-label">Nombre conductor</span>
+                            <span class="data-value" id="repConductor">-</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="data-label">Matrícula vehículo</span>
+                            <span class="data-value" id="repMatricula">-</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="data-label">Contenedor</span>
+                            <span class="data-value" id="repContenedor">-</span>
+                        </div>
+                        
+                        <div class="data-row info" id="repLocalizadorBox" style="display:none;">
+                            <span class="data-label">Nº Localizador</span>
+                            <span class="data-value" id="repLocalizador">-</span>
+                        </div>
+                        
+                        <div class="data-row" id="repPiesBox">
+                            <span class="data-label">Tamaño</span>
+                            <span class="data-value" id="repPies">-</span>
+                        </div>
+                        
+                        <div class="data-row">
+                            <span class="data-label">Estado</span>
+                            <span class="data-value" id="repEstado">-</span>
+                        </div>
+                        
+                        <div class="data-row full-width" id="repDestinoBox">
+                            <span class="data-label">Destino</span>
+                            <span class="data-value" id="repDestino">-</span>
+                        </div>
+                        
+                        <div class="data-row" id="repTaraBox">
+                            <span class="data-label">Tara (KG)</span>
+                            <span class="data-value" id="repTara">-</span>
+                        </div>
+                        
+                        <div class="data-row" id="repPesoBox">
+                            <span class="data-label">Peso Carga</span>
+                            <span class="data-value" id="repPeso">-</span>
+                        </div>
+
+                        <div class="data-row danger full-width" id="repADRInfo" style="display:none;">
+                            <span class="data-label" style="color: #991b1b;">MERCANCÍA PELIGROSA</span>
+                            <span class="data-value" style="color: #ef4444;">ADR ACTIVO</span>
+                        </div>
+                        <div class="data-row danger" id="repONUBox" style="display:none;">
+                            <span class="data-label" style="color: #991b1b;">ONU</span>
+                            <span class="data-value" id="repONU">-</span>
+                        </div>
+                        <div class="data-row danger" id="repClaseBox" style="display:none;">
+                            <span class="data-label" style="color: #991b1b;">Clase</span>
+                            <span class="data-value" id="repClase">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="btn-group form-actions">
+                    <button class="btn btn-warning" onclick="descargarReporteImagen()">
+                        💾 Guardar Imagen
+                    </button>
+                    <button class="btn btn-success" onclick="imprimirReporte()">
+                        🖨️ Imprimir
+                    </button>
+                    <button class="btn btn-csv" onclick="exportarCSV()">
+                        📎 Exp.CSV
+                    </button>
+                    <button class="btn btn-secondary" onclick="volverAlFormulario()">
+                        ↩ Volver
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>© UTI STOCK · F-PC</p>
+        </div>
+    </div>
+
+    <!-- Vista LISTA RESERVAS (integra index_reserva-cliente.html sin GENERAR QR) -->
+    <!-- 04/10/2026: LISTA RESERVAS abre el REGISTRO MASIVO (registros masivos/REGISTRO MASIVO.html).
+         La barra superior da la salida, porque el registro masivo no tiene botón propio para volver. -->
+    <div id="reservasView" class="reservas-view">
+        <div class="reservas-topbar">
+            <button type="button" class="reservas-back-btn" onclick="cerrarListaReservas()">← VOLVER</button>
+            <span class="reservas-topbar-title">📋 Lista reservas · Registro masivo<span id="reservasTopTerminal"></span></span>
+        </div>
+        <iframe id="reservasIframe" title="Registro masivo de reservas"></iframe>
+    </div>
+
+    <script src="libs/qrcode.min.js"></script>
+    <script src="libs/html2canvas.min.js"></script>
+    <!-- 04/10/2026: terminales y estaciones (se gestionan en registros masivos/editor.html) -->
+    <script src="datos/terminales_datos.js"></script>
+
+    <!-- Datos ADR/ONU/Clase (extraídos de ADR-ONU_CLASE.json, incrustados para funcionar en local file://) -->
+    <script type="application/json" id="adrData">
+[
+  {"onu":"0004","clase":"1.1D","descripcion":"PICRATO DE AMONIO SECO","medio_ambiente":false},
+  {"onu":"0027","clase":"1.1G","descripcion":"PÓLVORA NEGRA","medio_ambiente":false},
+  {"onu":"0042","clase":"1.1D","descripcion":"REFORZADORES SIN DETONADOR","medio_ambiente":false},
+  {"onu":"0081","clase":"1.1D","descripcion":"EXPLOSIVO DE MINA TIPO A","medio_ambiente":false},
+  {"onu":"0082","clase":"1.1D","descripcion":"EXPLOSIVO DE MINA TIPO B","medio_ambiente":false},
+  {"onu":"0143","clase":"1.1D","descripcion":"NITROGLICERINA DESENSIBILIZADA","medio_ambiente":false},
+  {"onu":"0161","clase":"1.3C","descripcion":"PÓLVORA SIN HUMO","medio_ambiente":false},
+  {"onu":"0323","clase":"1.4S","descripcion":"CARTUCHOS PARA HERRAMIENTAS","medio_ambiente":false},
+  {"onu":"0336","clase":"1.4S","descripcion":"ARTIFICIOS PIROTÉCNICOS","medio_ambiente":false},
+  {"onu":"0337","clase":"1.4S","descripcion":"ARTIFICIOS DE SEÑAL","medio_ambiente":false},
+  {"onu":"1001","clase":"2.1","descripcion":"ACETILENO DISUELTO","medio_ambiente":false},
+  {"onu":"1002","clase":"2.2","descripcion":"AIRE COMPRIMIDO","medio_ambiente":false},
+  {"onu":"1005","clase":"2.3","descripcion":"AMONIACO ANHIDRO","medio_ambiente":true},
+  {"onu":"1006","clase":"2.2","descripcion":"ARGÓN COMPRIMIDO","medio_ambiente":false},
+  {"onu":"1009","clase":"2.2","descripcion":"BROMOTRIFLUOROMETANO (GAS REFRIGERANTE R13B1)","medio_ambiente":false},
+  {"onu":"1010","clase":"2.1","descripcion":"BUTADIENOS ESTABILIZADOS","medio_ambiente":false},
+  {"onu":"1011","clase":"2.1","descripcion":"BUTANO","medio_ambiente":false},
+  {"onu":"1012","clase":"2.1","descripcion":"BUTILENO","medio_ambiente":false},
+  {"onu":"1013","clase":"2.2","descripcion":"DIÓXIDO DE CARBONO","medio_ambiente":false},
+  {"onu":"1017","clase":"2.3","descripcion":"CLORO","medio_ambiente":true},
+  {"onu":"1018","clase":"2.2","descripcion":"CLORODIFLUOROMETANO (R22)","medio_ambiente":false},
+  {"onu":"1022","clase":"2.2","descripcion":"CLOROTRIFLUOROMETANO (R13)","medio_ambiente":false},
+  {"onu":"1023","clase":"2.3","descripcion":"GAS DE HULLA COMPRIMIDO","medio_ambiente":false},
+  {"onu":"1026","clase":"2.3","descripcion":"CIANÓGENO","medio_ambiente":true},
+  {"onu":"1027","clase":"2.1","descripcion":"CICLOPROPANO","medio_ambiente":false},
+  {"onu":"1028","clase":"2.2","descripcion":"DICLORODIFLUOROMETANO (R12)","medio_ambiente":false},
+  {"onu":"1029","clase":"2.2","descripcion":"DICLOROFLUOROMETANO (R21)","medio_ambiente":false},
+  {"onu":"1030","clase":"2.1","descripcion":"1,1-DIFLUOROETANO (R152A)","medio_ambiente":false},
+  {"onu":"1032","clase":"2.1","descripcion":"DIMETILAMINA ANHIDRA","medio_ambiente":false},
+  {"onu":"1035","clase":"2.1","descripcion":"ETANO","medio_ambiente":false},
+  {"onu":"1036","clase":"2.1","descripcion":"ETILAMINA","medio_ambiente":false},
+  {"onu":"1038","clase":"2.2","descripcion":"ETILENO LÍQUIDO REFRIGERADO","medio_ambiente":false},
+  {"onu":"1040","clase":"2.3","descripcion":"ÓXIDO DE ETILENO CON NITRÓGENO","medio_ambiente":false},
+  {"onu":"1046","clase":"2.2","descripcion":"HELIO COMPRIMIDO","medio_ambiente":false},
+  {"onu":"1049","clase":"2.1","descripcion":"HIDRÓGENO COMPRIMIDO","medio_ambiente":false},
+  {"onu":"1050","clase":"2.3","descripcion":"CLORURO DE HIDRÓGENO ANHIDRO","medio_ambiente":false},
+  {"onu":"1053","clase":"2.3","descripcion":"SULFURO DE HIDRÓGENO","medio_ambiente":true},
+  {"onu":"1055","clase":"2.1","descripcion":"ISOBUTILENO","medio_ambiente":false},
+  {"onu":"1056","clase":"2.2","descripcion":"KRIPTÓN COMPRIMIDO","medio_ambiente":false},
+  {"onu":"1060","clase":"2.1","descripcion":"METILACETILENO Y PROPADIENO EN MEZCLA ESTABILIZADA","medio_ambiente":false},
+  {"onu":"1061","clase":"2.1","descripcion":"METILAMINA ANHIDRA","medio_ambiente":false},
+  {"onu":"1062","clase":"2.3","descripcion":"BROMURO DE METILO","medio_ambiente":true},
+  {"onu":"1063","clase":"2.1","descripcion":"CLORURO DE METILO (R40)","medio_ambiente":false},
+  {"onu":"1064","clase":"2.3","descripcion":"METANOTIOL (MERCAPTANO METÍLICO)","medio_ambiente":true},
+  {"onu":"1065","clase":"2.2","descripcion":"NEÓN COMPRIMIDO","medio_ambiente":false},
+  {"onu":"1066","clase":"2.2","descripcion":"NITRÓGENO COMPRIMIDO","medio_ambiente":false},
+  {"onu":"1067","clase":"2.3","descripcion":"TETRÓXIDO DE DINITRÓGENO","medio_ambiente":false},
+  {"onu":"1069","clase":"2.3","descripcion":"CLORURO DE NITROSILO","medio_ambiente":false},
+  {"onu":"1070","clase":"2.2","descripcion":"ÓXIDO NITROSO","medio_ambiente":false},
+  {"onu":"1071","clase":"2.3","descripcion":"GAS DE PETRÓLEO COMPRIMIDO","medio_ambiente":false},
+  {"onu":"1072","clase":"2.2","descripcion":"OXÍGENO COMPRIMIDO","medio_ambiente":false},
+  {"onu":"1073","clase":"2.2","descripcion":"OXÍGENO LÍQUIDO REFRIGERADO","medio_ambiente":false},
+  {"onu":"1075","clase":"2.1","descripcion":"GASES DE PETRÓLEO LICUADOS (GLP)","medio_ambiente":false},
+  {"onu":"1076","clase":"2.3","descripcion":"FOSGENO","medio_ambiente":false},
+  {"onu":"1077","clase":"2.1","descripcion":"PROPILENO","medio_ambiente":false},
+  {"onu":"1078","clase":"2.2","descripcion":"GAS REFRIGERANTE N.E.P.","medio_ambiente":false},
+  {"onu":"1079","clase":"2.3","descripcion":"DIÓXIDO DE AZUFRE","medio_ambiente":false},
+  {"onu":"1080","clase":"2.2","descripcion":"HEXAFLUORURO DE AZUFRE","medio_ambiente":false},
+  {"onu":"1086","clase":"2.1","descripcion":"CLORURO DE VINILO ESTABILIZADO","medio_ambiente":false},
+  {"onu":"1089","clase":"3","descripcion":"ACETALDEHÍDO","medio_ambiente":false},
+  {"onu":"1090","clase":"3","descripcion":"ACETONA","medio_ambiente":false},
+  {"onu":"1091","clase":"3","descripcion":"ACEITES DE ACETONA","medio_ambiente":false},
+  {"onu":"1093","clase":"3","descripcion":"ACRILONITRILO ESTABILIZADO","medio_ambiente":true},
+  {"onu":"1098","clase":"6.1","descripcion":"ALCOHOL ALÍLICO","medio_ambiente":false},
+  {"onu":"1100","clase":"3","descripcion":"CLORURO DE ALILO","medio_ambiente":true},
+  {"onu":"1104","clase":"3","descripcion":"ACETATOS DE AMILO","medio_ambiente":false},
+  {"onu":"1106","clase":"3","descripcion":"AMILAMINAS","medio_ambiente":false},
+  {"onu":"1114","clase":"3","descripcion":"BENCENO","medio_ambiente":false},
+  {"onu":"1120","clase":"3","descripcion":"BUTANOLES","medio_ambiente":false},
+  {"onu":"1123","clase":"3","descripcion":"ACETATOS DE BUTILO","medio_ambiente":false},
+  {"onu":"1125","clase":"3","descripcion":"N-BUTILAMINA","medio_ambiente":false},
+  {"onu":"1131","clase":"3","descripcion":"DISULFURO DE CARBONO","medio_ambiente":false},
+  {"onu":"1133","clase":"3","descripcion":"ADHESIVOS","medio_ambiente":false},
+  {"onu":"1139","clase":"3","descripcion":"SOLUCIÓN PARA RECUBRIMIENTOS","medio_ambiente":false},
+  {"onu":"1143","clase":"6.1","descripcion":"CROTONALDEHÍDO ESTABILIZADO","medio_ambiente":true},
+  {"onu":"1145","clase":"3","descripcion":"CICLOHEXANO","medio_ambiente":false},
+  {"onu":"1146","clase":"3","descripcion":"CICLOPENTANO","medio_ambiente":false},
+  {"onu":"1148","clase":"3","descripcion":"ALCOHOL DIACETÓNICO","medio_ambiente":false},
+  {"onu":"1154","clase":"3","descripcion":"DIETILAMINA","medio_ambiente":false},
+  {"onu":"1155","clase":"3","descripcion":"ÉTER ETÍLICO","medio_ambiente":false},
+  {"onu":"1170","clase":"3","descripcion":"ETANOL (ALCOHOL ETÍLICO)","medio_ambiente":false},
+  {"onu":"1172","clase":"3","descripcion":"ACETATO DE ETILGLICOL","medio_ambiente":false},
+  {"onu":"1173","clase":"3","descripcion":"ACETATO DE ETILO","medio_ambiente":false},
+  {"onu":"1175","clase":"3","descripcion":"ETILBENCENO","medio_ambiente":false},
+  {"onu":"1184","clase":"3","descripcion":"DICLORURO DE ETILENO","medio_ambiente":true},
+  {"onu":"1193","clase":"3","descripcion":"METILETILCETONA (MEK)","medio_ambiente":false},
+  {"onu":"1198","clase":"3","descripcion":"SOLUCIONES DE FORMALDEHÍDO INFLAMABLES","medio_ambiente":false},
+  {"onu":"1202","clase":"3","descripcion":"GASÓLEO / DIÉSEL / FUEL OIL","medio_ambiente":true},
+  {"onu":"1203","clase":"3","descripcion":"GASOLINA","medio_ambiente":true},
+  {"onu":"1206","clase":"3","descripcion":"HEPTANOS","medio_ambiente":false},
+  {"onu":"1208","clase":"3","descripcion":"HEXANOS","medio_ambiente":false},
+  {"onu":"1210","clase":"3","descripcion":"TINTAS DE IMPRENTA INFLAMABLES","medio_ambiente":false},
+  {"onu":"1212","clase":"3","descripcion":"ISOBUTANOL","medio_ambiente":false},
+  {"onu":"1213","clase":"3","descripcion":"ACETATO DE ISOBUTILO","medio_ambiente":false},
+  {"onu":"1219","clase":"3","descripcion":"ISOPROPANOL (ALCOHOL ISOPROPÍLICO)","medio_ambiente":false},
+  {"onu":"1220","clase":"3","descripcion":"ACETATO DE ISOPROPILO","medio_ambiente":false},
+  {"onu":"1223","clase":"3","descripcion":"QUEROSENO","medio_ambiente":true},
+  {"onu":"1230","clase":"3","descripcion":"METANOL","medio_ambiente":false},
+  {"onu":"1247","clase":"3","descripcion":"METACRILATO DE METILO MONÓMERO ESTABILIZADO","medio_ambiente":false},
+  {"onu":"1255","clase":"3","descripcion":"NAFTA DISOLVENTE","medio_ambiente":true},
+  {"onu":"1261","clase":"3","descripcion":"NITROMETANO","medio_ambiente":false},
+  {"onu":"1263","clase":"3","descripcion":"PINTURAS / PRODUCTOS DE PINTURA","medio_ambiente":false},
+  {"onu":"1265","clase":"3","descripcion":"PENTANOS","medio_ambiente":false},
+  {"onu":"1267","clase":"3","descripcion":"PETRÓLEO CRUDO","medio_ambiente":true},
+  {"onu":"1268","clase":"3","descripcion":"DESTILADOS DE PETRÓLEO N.E.P.","medio_ambiente":true},
+  {"onu":"1274","clase":"3","descripcion":"N-PROPANOL","medio_ambiente":false},
+  {"onu":"1277","clase":"3","descripcion":"PROPILAMINA","medio_ambiente":false},
+  {"onu":"1282","clase":"3","descripcion":"PIRIDINA","medio_ambiente":false},
+  {"onu":"1294","clase":"3","descripcion":"TOLUENO","medio_ambiente":false},
+  {"onu":"1296","clase":"3","descripcion":"TRIETILAMINA","medio_ambiente":false},
+  {"onu":"1299","clase":"3","descripcion":"TREMENTINA","medio_ambiente":true},
+  {"onu":"1300","clase":"3","descripcion":"SUCEDÁNEO DE TREMENTINA (WHITE SPIRIT)","medio_ambiente":true},
+  {"onu":"1307","clase":"3","descripcion":"XILENOS","medio_ambiente":false},
+  {"onu":"1325","clase":"4.1","descripcion":"SÓLIDO ORGÁNICO INFLAMABLE N.E.P.","medio_ambiente":false},
+  {"onu":"1361","clase":"4.2","descripcion":"CARBÓN DE ORIGEN ANIMAL O VEGETAL","medio_ambiente":false},
+  {"onu":"1362","clase":"4.2","descripcion":"CARBÓN ACTIVADO","medio_ambiente":false},
+  {"onu":"1381","clase":"4.2","descripcion":"FÓSFORO BLANCO O AMARILLO SECO","medio_ambiente":true},
+  {"onu":"1389","clase":"4.3","descripcion":"AMALGAMA DE METAL ALCALINO LÍQUIDA","medio_ambiente":true},
+  {"onu":"1402","clase":"4.3","descripcion":"CARBURO DE CALCIO","medio_ambiente":false},
+  {"onu":"1407","clase":"4.3","descripcion":"CESIO","medio_ambiente":false},
+  {"onu":"1428","clase":"4.3","descripcion":"SODIO","medio_ambiente":false},
+  {"onu":"1438","clase":"5.1","descripcion":"NITRATO DE ALUMINIO","medio_ambiente":false},
+  {"onu":"1442","clase":"5.1","descripcion":"PERCLORATO DE AMONIO","medio_ambiente":false},
+  {"onu":"1454","clase":"5.1","descripcion":"NITRATO DE CALCIO","medio_ambiente":false},
+  {"onu":"1479","clase":"5.1","descripcion":"SÓLIDO COMBURENTE N.E.P.","medio_ambiente":false},
+  {"onu":"1486","clase":"5.1","descripcion":"NITRATO DE POTASIO","medio_ambiente":false},
+  {"onu":"1498","clase":"5.1","descripcion":"NITRATO DE SODIO","medio_ambiente":false},
+  {"onu":"1541","clase":"6.1","descripcion":"ACETONA-CIANHIDRINA ESTABILIZADA","medio_ambiente":true},
+  {"onu":"1547","clase":"6.1","descripcion":"ANILINA","medio_ambiente":true},
+  {"onu":"1555","clase":"6.1","descripcion":"BROMURO DE ARSÉNICO","medio_ambiente":true},
+  {"onu":"1578","clase":"6.1","descripcion":"CLORONITROBENCENOS SÓLIDOS","medio_ambiente":true},
+  {"onu":"1590","clase":"6.1","descripcion":"DICLOROANILINAS LÍQUIDAS","medio_ambiente":true},
+  {"onu":"1593","clase":"6.1","descripcion":"DICLOROMETANO","medio_ambiente":false},
+  {"onu":"1605","clase":"6.1","descripcion":"DIBROMURO DE ETILENO","medio_ambiente":true},
+  {"onu":"1649","clase":"6.1","descripcion":"MEZCLA ANTIDETONANTE PARA CARBURANTES","medio_ambiente":true},
+  {"onu":"1654","clase":"6.1","descripcion":"NICOTINA","medio_ambiente":true},
+  {"onu":"1680","clase":"6.1","descripcion":"CIANURO DE POTASIO SÓLIDO","medio_ambiente":true},
+  {"onu":"1689","clase":"6.1","descripcion":"CIANURO DE SODIO SÓLIDO","medio_ambiente":true},
+  {"onu":"1710","clase":"6.1","descripcion":"TRICLOROETILENO","medio_ambiente":true},
+  {"onu":"1738","clase":"6.1","descripcion":"CLORURO DE BENCILO","medio_ambiente":true},
+  {"onu":"1740","clase":"8","descripcion":"HIDROGENODIFLUORUROS SÓLIDOS N.E.P.","medio_ambiente":false},
+  {"onu":"1748","clase":"5.1","descripcion":"HIPOCLORITO DE CALCIO SECO","medio_ambiente":true},
+  {"onu":"1760","clase":"8","descripcion":"LÍQUIDO CORROSIVO N.E.P.","medio_ambiente":false},
+  {"onu":"1763","clase":"8","descripcion":"LÍQUIDOS CORROSIVOS TÓXICOS N.E.P.","medio_ambiente":false},
+  {"onu":"1779","clase":"8","descripcion":"ÁCIDO FÓRMICO","medio_ambiente":false},
+  {"onu":"1789","clase":"8","descripcion":"ÁCIDO CLORHÍDRICO","medio_ambiente":false},
+  {"onu":"1791","clase":"8","descripcion":"HIPOCLORITO EN SOLUCIÓN","medio_ambiente":true},
+  {"onu":"1805","clase":"8","descripcion":"ÁCIDO FOSFÓRICO EN SOLUCIÓN","medio_ambiente":false},
+  {"onu":"1813","clase":"8","descripcion":"HIDRÓXIDO POTÁSICO SÓLIDO","medio_ambiente":false},
+  {"onu":"1814","clase":"8","descripcion":"SOLUCIÓN DE HIDRÓXIDO POTÁSICO","medio_ambiente":false},
+  {"onu":"1823","clase":"8","descripcion":"HIDRÓXIDO DE SODIO SÓLIDO","medio_ambiente":false},
+  {"onu":"1824","clase":"8","descripcion":"SOLUCIÓN DE HIDRÓXIDO DE SODIO","medio_ambiente":false},
+  {"onu":"1830","clase":"8","descripcion":"ÁCIDO SULFÚRICO","medio_ambiente":false},
+  {"onu":"1831","clase":"8","descripcion":"ÁCIDO SULFÚRICO FUMANTE","medio_ambiente":false},
+  {"onu":"1832","clase":"8","descripcion":"ÁCIDO SULFÚRICO AGOTADO","medio_ambiente":false},
+  {"onu":"1840","clase":"8","descripcion":"SOLUCIÓN DE CLORURO DE ZINC","medio_ambiente":false},
+  {"onu":"1845","clase":"9","descripcion":"DIÓXIDO DE CARBONO SÓLIDO (HIELO SECO)","medio_ambiente":false},
+  {"onu":"1846","clase":"6.1","descripcion":"TETRACLORURO DE CARBONO","medio_ambiente":true},
+  {"onu":"1854","clase":"4.2","descripcion":"ALEACIONES PIROFÓRICAS DE BARIO","medio_ambiente":false},
+  {"onu":"1866","clase":"3","descripcion":"RESINA EN SOLUCIÓN INFLAMABLE","medio_ambiente":false},
+  {"onu":"1888","clase":"6.1","descripcion":"CLOROFORMO","medio_ambiente":true},
+  {"onu":"1897","clase":"6.1","descripcion":"TETRACLOROETILENO","medio_ambiente":true},
+  {"onu":"1950","clase":"2","descripcion":"AEROSOLES","medio_ambiente":false},
+  {"onu":"1956","clase":"2.2","descripcion":"GAS COMPRIMIDO N.E.P.","medio_ambiente":false},
+  {"onu":"1965","clase":"2.1","descripcion":"MEZCLA DE HIDROCARBUROS GASEOSOS LICUADOS N.E.P.","medio_ambiente":false},
+  {"onu":"1971","clase":"2.1","descripcion":"GAS NATURAL COMPRIMIDO (GNC)","medio_ambiente":false},
+  {"onu":"1972","clase":"2.1","descripcion":"GAS NATURAL LICUADO REFRIGERADO (GNL)","medio_ambiente":false},
+  {"onu":"1977","clase":"2.2","descripcion":"NITRÓGENO LÍQUIDO REFRIGERADO","medio_ambiente":false},
+  {"onu":"1978","clase":"2.1","descripcion":"PROPANO","medio_ambiente":false},
+  {"onu":"1987","clase":"3","descripcion":"ALCOHOLES N.E.P.","medio_ambiente":false},
+  {"onu":"1992","clase":"3","descripcion":"LÍQUIDO INFLAMABLE TÓXICO N.E.P.","medio_ambiente":false},
+  {"onu":"1993","clase":"3","descripcion":"LÍQUIDO INFLAMABLE N.E.P.","medio_ambiente":false},
+  {"onu":"1999","clase":"3","descripcion":"ALQUITRANES LÍQUIDOS","medio_ambiente":true},
+  {"onu":"2014","clase":"5.1","descripcion":"PERÓXIDO DE HIDRÓGENO EN SOLUCIÓN (20-60%)","medio_ambiente":false},
+  {"onu":"2015","clase":"5.1","descripcion":"PERÓXIDO DE HIDRÓGENO ESTABILIZADO (>60%)","medio_ambiente":false},
+  {"onu":"2031","clase":"8","descripcion":"ÁCIDO NÍTRICO","medio_ambiente":false},
+  {"onu":"2045","clase":"3","descripcion":"ISOBUTIRALDEHÍDO","medio_ambiente":false},
+  {"onu":"2055","clase":"3","descripcion":"ESTIRENO MONÓMERO ESTABILIZADO","medio_ambiente":false},
+  {"onu":"2067","clase":"5.1","descripcion":"ABONOS A BASE DE NITRATO AMÓNICO","medio_ambiente":false},
+  {"onu":"2078","clase":"6.1","descripcion":"DIISOCIANATO DE TOLUENO","medio_ambiente":false},
+  {"onu":"2209","clase":"8","descripcion":"SOLUCIÓN DE FORMALDEHÍDO (>25%)","medio_ambiente":false},
+  {"onu":"2213","clase":"9","descripcion":"PARAFORMALDEHÍDO","medio_ambiente":false},
+  {"onu":"2215","clase":"8","descripcion":"ANHÍDRIDO MALEICO","medio_ambiente":false},
+  {"onu":"2218","clase":"8","descripcion":"ÁCIDO ACRÍLICO ESTABILIZADO","medio_ambiente":false},
+  {"onu":"2224","clase":"6.1","descripcion":"BENZONITRILO","medio_ambiente":false},
+  {"onu":"2235","clase":"6.1","descripcion":"CLOROBENCILOS CLORURADOS LÍQUIDOS","medio_ambiente":true},
+  {"onu":"2271","clase":"3","descripcion":"ETILAMILCETONA","medio_ambiente":false},
+  {"onu":"2312","clase":"6.1","descripcion":"FENOL FUNDIDO","medio_ambiente":true},
+  {"onu":"2315","clase":"9","descripcion":"POLICLOROBIFENILOS LÍQUIDOS (PCB)","medio_ambiente":true},
+  {"onu":"2319","clase":"3","descripcion":"HIDROCARBUROS TERPÉNICOS N.E.P.","medio_ambiente":true},
+  {"onu":"2331","clase":"8","descripcion":"CLORURO DE ZINC ANHIDRO","medio_ambiente":true},
+  {"onu":"2337","clase":"6.1","descripcion":"FENILMERCAPTANO","medio_ambiente":true},
+  {"onu":"2348","clase":"3","descripcion":"ACRILATOS DE BUTILO ESTABILIZADOS","medio_ambiente":false},
+  {"onu":"2362","clase":"3","descripcion":"1,1-DICLOROETANO","medio_ambiente":false},
+  {"onu":"2398","clase":"3","descripcion":"METILTERBUTILÉTER","medio_ambiente":false},
+  {"onu":"2425","clase":"4.1","descripcion":"FÓSFORO ROJO","medio_ambiente":false},
+  {"onu":"2448","clase":"4.1","descripcion":"AZUFRE FUNDIDO","medio_ambiente":false},
+  {"onu":"2480","clase":"6.1","descripcion":"ISOCIANATO DE METILO","medio_ambiente":false},
+  {"onu":"2481","clase":"3","descripcion":"ISOCIANATO DE ETILO","medio_ambiente":false},
+  {"onu":"2491","clase":"6.1","descripcion":"ETANOLAMINA EN SOLUCIÓN","medio_ambiente":false},
+  {"onu":"2564","clase":"8","descripcion":"SOLUCIÓN DE ÁCIDO TRICLOROACÉTICO","medio_ambiente":false},
+  {"onu":"2582","clase":"8","descripcion":"SOLUCIÓN DE CLORURO FÉRRICO","medio_ambiente":false},
+  {"onu":"2586","clase":"8","descripcion":"ÁCIDOS ALQUIL/ARILSULFÓNICOS LÍQUIDOS","medio_ambiente":false},
+  {"onu":"2672","clase":"8","descripcion":"SOLUCIÓN DE AMONIACO","medio_ambiente":true},
+  {"onu":"2680","clase":"8","descripcion":"HIDRÓXIDO DE LITIO","medio_ambiente":false},
+  {"onu":"2735","clase":"8","descripcion":"AMINAS LÍQUIDAS CORROSIVAS N.E.P.","medio_ambiente":false},
+  {"onu":"2783","clase":"6.1","descripcion":"PLAGUICIDAS ORGANOFOSFORADOS SÓLIDOS TÓXICOS","medio_ambiente":true},
+  {"onu":"2784","clase":"3","descripcion":"PLAGUICIDAS ORGANOFOSFORADOS LÍQUIDOS INFLAMABLES TÓXICOS","medio_ambiente":true},
+  {"onu":"2790","clase":"8","descripcion":"SOLUCIÓN DE ÁCIDO ACÉTICO (10-80%)","medio_ambiente":false},
+  {"onu":"2796","clase":"8","descripcion":"ÁCIDO SULFÚRICO ACUMULADOR","medio_ambiente":false},
+  {"onu":"2800","clase":"8","descripcion":"BATERÍAS ELÉCTRICAS HÚMEDAS INVIOLABLES","medio_ambiente":false},
+  {"onu":"2810","clase":"6.1","descripcion":"LÍQUIDO ORGÁNICO TÓXICO N.E.P.","medio_ambiente":false},
+  {"onu":"2811","clase":"6.1","descripcion":"SÓLIDO ORGÁNICO TÓXICO N.E.P.","medio_ambiente":false},
+  {"onu":"2814","clase":"6.2","descripcion":"MATERIAS INFECCIOSAS QUE AFECTAN AL SER HUMANO","medio_ambiente":false},
+  {"onu":"2900","clase":"6.2","descripcion":"MATERIAS INFECCIOSAS QUE AFECTAN A LOS ANIMALES","medio_ambiente":false},
+  {"onu":"2902","clase":"6.1","descripcion":"PLAGUICIDA LÍQUIDO TÓXICO N.E.P.","medio_ambiente":true},
+  {"onu":"2903","clase":"6.1","descripcion":"PLAGUICIDA LÍQUIDO TÓXICO INFLAMABLE N.E.P.","medio_ambiente":true},
+  {"onu":"2908","clase":"7","descripcion":"MATERIAL RADIACTIVO EMBALAJE EXCEPTUADO","medio_ambiente":false},
+  {"onu":"2910","clase":"7","descripcion":"MATERIAL RADIACTIVO EMBALAJE EXCEPTUADO - CANTIDADES LIMITADAS","medio_ambiente":false},
+  {"onu":"2912","clase":"7","descripcion":"MATERIAL RADIACTIVO ACTIVIDAD ESPECÍFICA BAJA (LSA-I)","medio_ambiente":false},
+  {"onu":"2915","clase":"7","descripcion":"MATERIAL RADIACTIVO BULTO TIPO A","medio_ambiente":false},
+  {"onu":"2919","clase":"7","descripcion":"MATERIAL RADIACTIVO TRANSPORTADO EN ARREGLOS ESPECIALES","medio_ambiente":false},
+  {"onu":"2920","clase":"8","descripcion":"LÍQUIDO CORROSIVO INFLAMABLE N.E.P.","medio_ambiente":false},
+  {"onu":"2922","clase":"8","descripcion":"LÍQUIDO CORROSIVO TÓXICO N.E.P.","medio_ambiente":false},
+  {"onu":"2924","clase":"3","descripcion":"LÍQUIDO INFLAMABLE CORROSIVO N.E.P.","medio_ambiente":false},
+  {"onu":"2984","clase":"5.1","descripcion":"PERÓXIDO DE HIDRÓGENO EN SOLUCIÓN (8-20%)","medio_ambiente":false},
+  {"onu":"3077","clase":"9","descripcion":"MATERIA SÓLIDA PELIGROSA PARA EL MEDIO AMBIENTE N.E.P.","medio_ambiente":true},
+  {"onu":"3082","clase":"9","descripcion":"MATERIA LÍQUIDA PELIGROSA PARA EL MEDIO AMBIENTE N.E.P.","medio_ambiente":true},
+  {"onu":"3089","clase":"4.1","descripcion":"POLVOS METÁLICOS INFLAMABLES N.E.P.","medio_ambiente":false},
+  {"onu":"3090","clase":"9","descripcion":"BATERÍAS DE LITIO METÁLICO","medio_ambiente":false},
+  {"onu":"3091","clase":"9","descripcion":"BATERÍAS DE LITIO METÁLICO CONTENIDAS EN EQUIPO","medio_ambiente":false},
+  {"onu":"3148","clase":"4.3","descripcion":"LÍQUIDO HIDRORREACTIVO N.E.P.","medio_ambiente":false},
+  {"onu":"3164","clase":"2.2","descripcion":"OBJETOS PRESURIZADOS NEUMÁTICOS O HIDRÁULICOS","medio_ambiente":false},
+  {"onu":"3166","clase":"9","descripcion":"VEHÍCULO CON MOTOR PROPULSADO POR GAS/LÍQUIDO INFLAMABLE","medio_ambiente":false},
+  {"onu":"3171","clase":"9","descripcion":"VEHÍCULO PROPULSADO POR BATERÍAS","medio_ambiente":false},
+  {"onu":"3175","clase":"4.1","descripcion":"SÓLIDOS QUE CONTIENEN LÍQUIDO INFLAMABLE N.E.P.","medio_ambiente":false},
+  {"onu":"3178","clase":"4.1","descripcion":"SÓLIDO INORGÁNICO INFLAMABLE N.E.P.","medio_ambiente":false},
+  {"onu":"3243","clase":"6.1","descripcion":"SÓLIDOS QUE CONTIENEN LÍQUIDO TÓXICO N.E.P.","medio_ambiente":false},
+  {"onu":"3245","clase":"9","descripcion":"MICROORGANISMOS MODIFICADOS GENÉTICAMENTE","medio_ambiente":false},
+  {"onu":"3257","clase":"9","descripcion":"LÍQUIDO TRANSPORTADO A TEMPERATURA ELEVADA N.E.P.","medio_ambiente":false},
+  {"onu":"3258","clase":"9","descripcion":"SÓLIDO TRANSPORTADO A TEMPERATURA ELEVADA N.E.P.","medio_ambiente":false},
+  {"onu":"3264","clase":"8","descripcion":"LÍQUIDO INORGÁNICO CORROSIVO ÁCIDO N.E.P.","medio_ambiente":false},
+  {"onu":"3265","clase":"8","descripcion":"LÍQUIDO ORGÁNICO CORROSIVO ÁCIDO N.E.P.","medio_ambiente":false},
+  {"onu":"3266","clase":"8","descripcion":"LÍQUIDO INORGÁNICO CORROSIVO BÁSICO N.E.P.","medio_ambiente":false},
+  {"onu":"3267","clase":"8","descripcion":"LÍQUIDO ORGÁNICO CORROSIVO BÁSICO N.E.P.","medio_ambiente":false},
+  {"onu":"3268","clase":"9","descripcion":"DISPOSITIVOS DE SEGURIDAD INICIADOS ELÉCTRICAMENTE (AIRBAG)","medio_ambiente":false},
+  {"onu":"3269","clase":"3","descripcion":"JUEGO DE RESINA POLIÉSTER","medio_ambiente":false},
+  {"onu":"3271","clase":"3","descripcion":"ÉTERES N.E.P.","medio_ambiente":false},
+  {"onu":"3272","clase":"3","descripcion":"ÉSTERES N.E.P.","medio_ambiente":false},
+  {"onu":"3286","clase":"3","descripcion":"LÍQUIDO INFLAMABLE TÓXICO CORROSIVO N.E.P.","medio_ambiente":false},
+  {"onu":"3291","clase":"6.2","descripcion":"DESECHO CLÍNICO NO ESPECIFICADO N.E.P.","medio_ambiente":false},
+  {"onu":"3295","clase":"3","descripcion":"HIDROCARBUROS LÍQUIDOS N.E.P.","medio_ambiente":true},
+  {"onu":"3316","clase":"9","descripcion":"BOTIQUÍN DE PRIMEROS AUXILIOS / QUÍMICO","medio_ambiente":false},
+  {"onu":"3334","clase":"9","descripcion":"LÍQUIDO REGULADO PARA LA AVIACIÓN N.E.P.","medio_ambiente":false},
+  {"onu":"3335","clase":"9","descripcion":"SÓLIDO REGULADO PARA LA AVIACIÓN N.E.P.","medio_ambiente":false},
+  {"onu":"3373","clase":"6.2","descripcion":"MATERIA BIOLÓGICA CATEGORÍA B","medio_ambiente":false},
+  {"onu":"3432","clase":"9","descripcion":"POLICLOROBIFENILOS SÓLIDOS (PCB)","medio_ambiente":true},
+  {"onu":"3475","clase":"3","descripcion":"MEZCLA DE ETANOL Y GASOLINA","medio_ambiente":true},
+  {"onu":"3480","clase":"9","descripcion":"BATERÍAS DE IÓN-LITIO","medio_ambiente":false},
+  {"onu":"3481","clase":"9","descripcion":"BATERÍAS DE IÓN-LITIO CONTENIDAS EN EQUIPO","medio_ambiente":false},
+  {"onu":"3496","clase":"9","descripcion":"BATERÍAS DE NÍQUEL-HIDRURO METÁLICO","medio_ambiente":false},
+  {"onu":"3509","clase":"9","descripcion":"EMBALAJES VACÍOS SIN LIMPIAR","medio_ambiente":false},
+  {"onu":"3537","clase":"2.1","descripcion":"OBJETOS QUE CONTIENEN GAS INFLAMABLE N.E.P.","medio_ambiente":false},
+  {"onu":"3538","clase":"2.2","descripcion":"OBJETOS QUE CONTIENEN GAS NO INFLAMABLE NO TÓXICO N.E.P.","medio_ambiente":false},
+  {"onu":"3539","clase":"2.3","descripcion":"OBJETOS QUE CONTIENEN GAS TÓXICO N.E.P.","medio_ambiente":false},
+  {"onu":"3540","clase":"3","descripcion":"OBJETOS QUE CONTIENEN LÍQUIDO INFLAMABLE N.E.P.","medio_ambiente":false},
+  {"onu":"3541","clase":"4.1","descripcion":"OBJETOS QUE CONTIENEN SÓLIDO INFLAMABLE N.E.P.","medio_ambiente":false},
+  {"onu":"3547","clase":"8","descripcion":"OBJETOS QUE CONTIENEN MATERIA CORROSIVA N.E.P.","medio_ambiente":false},
+  {"onu":"3548","clase":"9","descripcion":"OBJETOS QUE CONTIENEN MATERIAS PELIGROSAS DIVERSAS N.E.P.","medio_ambiente":false}
+]
+    </script>
+
+    <script>
+        // Variables globales
+        let currentFormType = '';
+        let currentReportType = '';
+        let ultimoDataQR = null;
+
+        // ---- Datos ADR/ONU/Clase ----
+        let ADR_DATA = [];
+        try {
+            ADR_DATA = JSON.parse(document.getElementById('adrData').textContent);
+        } catch (e) {
+            console.error('No se pudieron cargar los datos ADR/ONU:', e);
+        }
+
+        // Configura el autocompletado de ONU -> rellena Clase automáticamente
+        function setupOnuAutocomplete(inputId, listId, claseId) {
+            const input = document.getElementById(inputId);
+            const list = document.getElementById(listId);
+            const claseInput = document.getElementById(claseId);
+            if (!input || !list || !claseInput) return;
+
+            let activeIndex = -1;
+
+            const cerrar = () => {
+                list.classList.remove('show');
+                list.innerHTML = '';
+                activeIndex = -1;
+            };
+
+            const seleccionar = (item) => {
+                input.value = item.onu;
+                claseInput.value = item.clase;
+                cerrar();
+                claseInput.dispatchEvent(new Event('input'));
+            };
+
+            const render = (matches) => {
+                if (!matches.length) {
+                    list.innerHTML = '<li class="onu-empty">Sin coincidencias</li>';
+                    list.classList.add('show');
+                    return;
+                }
+                list.innerHTML = matches.map((m, i) => `
+                    <li class="onu-suggestion" data-index="${i}">
+                        <span class="onu-clase">${m.clase}</span>
+                        <span class="onu-num">${m.onu}</span>${m.medio_ambiente ? '<span class="onu-amb" title="Peligroso para el medio ambiente">🐟</span>' : ''}
+                        <span class="onu-desc">${m.descripcion}</span>
+                    </li>`).join('');
+                list.classList.add('show');
+                activeIndex = -1;
+                Array.from(list.children).forEach((li, i) => {
+                    li.addEventListener('mousedown', (ev) => {
+                        ev.preventDefault();
+                        seleccionar(matches[i]);
+                    });
+                });
+            };
+
+            input.addEventListener('input', () => {
+                // Solo dígitos, máx 4
+                input.value = input.value.replace(/[^0-9]/g, '').substring(0, 4);
+                const q = input.value.trim();
+                claseInput.value = '';
+                if (!q) { cerrar(); return; }
+                const matches = ADR_DATA.filter(m => m.onu.indexOf(q) === 0).slice(0, 50);
+                render(matches);
+                // Si hay coincidencia exacta, rellena la clase
+                const exacta = ADR_DATA.find(m => m.onu === q);
+                if (exacta) claseInput.value = exacta.clase;
+            });
+
+            input.addEventListener('keydown', (e) => {
+                const items = list.querySelectorAll('.onu-suggestion');
+                if (!list.classList.contains('show') || !items.length) return;
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    activeIndex = (activeIndex + 1) % items.length;
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    activeIndex = (activeIndex - 1 + items.length) % items.length;
+                } else if (e.key === 'Enter') {
+                    if (activeIndex >= 0) {
+                        e.preventDefault();
+                        items[activeIndex].dispatchEvent(new Event('mousedown'));
+                    }
+                    return;
+                } else if (e.key === 'Escape') {
+                    cerrar();
+                    return;
+                } else {
+                    return;
+                }
+                items.forEach((li, i) => li.classList.toggle('active', i === activeIndex));
+                if (activeIndex >= 0) items[activeIndex].scrollIntoView({ block: 'nearest' });
+            });
+
+            input.addEventListener('blur', () => setTimeout(cerrar, 150));
+        }
+
+        // Función para convertir a mayúsculas cualquier input de texto (excepto números)
+        function aplicarMayusculas(input) {
+            if (input && input.type !== 'number' && input.type !== 'checkbox' && input.tagName !== 'SELECT') {
+                input.value = input.value.toUpperCase();
+            }
+        }
+
+        // Acceso
+        function verificarAcceso() {
+            const userEl = document.getElementById('loginUser');
+            const usuario = userEl ? (userEl.value || '').trim() : '';
+            const codigo = (document.getElementById('accessCode').value || '').trim();
+            const errorDiv = document.getElementById('accessError');
+            const mostrarError = (msg) => {
+                errorDiv.textContent = msg;
+                errorDiv.style.display = 'block';
+                setTimeout(() => errorDiv.style.display = 'none', 2500);
+            };
+            // Solo se exige usuario si el campo existe en el formulario
+            if (userEl && !usuario) { mostrarError('Introduzca un nombre de usuario.'); return; }
+            if (codigo.toUpperCase() === "UTE-2026") {
+                // 04/10/2026: antes de entrar se pregunta la terminal/estación de las reservas
+                mostrarPasoTerminal();
+            } else {
+                mostrarError('Credenciales incorrectas. Intente de nuevo.');
+            }
+        }
+
+        // ---- TERMINAL / ESTACIÓN de la sesión (04/10/2026) ----
+        // Se elige una vez al acceder y vale para TODAS las reservas (entrada y salida):
+        // viaja en el QR (clave «terminal», con el id) y en el reporte (con el nombre).
+        let terminalSel = null;   // { id, nombre, tipo }
+
+        function terminalesActivas() {
+            const lista = Array.isArray(window.UTI_TERMINALES_DATOS) ? window.UTI_TERMINALES_DATOS : [];
+            return lista.filter(t => t && t.id && t.nombre && t.activa !== false);
+        }
+        function terminalTipoTxt(t) { return t && t.tipo === 'estacion' ? 'ESTACIÓN' : 'TERMINAL'; }
+        function terminalNombre(id) {
+            const lista = Array.isArray(window.UTI_TERMINALES_DATOS) ? window.UTI_TERMINALES_DATOS : [];
+            const t = lista.find(x => x && x.id === id);
+            return t ? t.nombre : (id || '');
+        }
+
+        function mostrarPasoTerminal() {
+            const sel = document.getElementById('terminalSelect');
+            const err = document.getElementById('terminalError');
+            const activas = terminalesActivas();
+            sel.innerHTML = '';
+            err.style.display = 'none';
+            document.getElementById('terminalBtn').disabled = !activas.length;
+            if (!activas.length) {
+                err.textContent = 'No hay ninguna terminal o estación configurada (datos/terminales_datos.js). Configúrelas en el EDITOR.';
+                err.style.display = 'block';
+            } else {
+                const ph = document.createElement('option');
+                ph.value = '';
+                ph.textContent = '— Seleccione —';
+                sel.appendChild(ph);
+                [['terminal', 'TERMINALES'], ['estacion', 'ESTACIONES']].forEach(([tipo, rotulo]) => {
+                    const grupo = activas.filter(t => (t.tipo === 'estacion' ? 'estacion' : 'terminal') === tipo);
+                    if (!grupo.length) return;
+                    const og = document.createElement('optgroup');
+                    og.label = rotulo;
+                    grupo.forEach(t => {
+                        const o = document.createElement('option');
+                        o.value = t.id;
+                        o.textContent = t.nombre;
+                        og.appendChild(o);
+                    });
+                    sel.appendChild(og);
+                });
+                if (activas.length === 1) sel.value = activas[0].id;
+            }
+            document.getElementById('accessForm').style.display = 'none';
+            document.getElementById('terminalStep').style.display = 'block';
+            sel.focus();
+        }
+
+        function volverAlCodigo() {
+            document.getElementById('terminalStep').style.display = 'none';
+            document.getElementById('accessForm').style.display = 'block';
+            const code = document.getElementById('accessCode');
+            code.value = '';
+            code.focus();
+        }
+
+        function confirmarTerminal() {
+            const id = document.getElementById('terminalSelect').value;
+            const t = terminalesActivas().find(x => x.id === id);
+            const err = document.getElementById('terminalError');
+            if (!t) {
+                err.textContent = 'Seleccione la terminal o estación para continuar.';
+                err.style.display = 'block';
+                setTimeout(() => err.style.display = 'none', 2500);
+                return;
+            }
+            terminalSel = { id: t.id, nombre: t.nombre, tipo: t.tipo === 'estacion' ? 'estacion' : 'terminal' };
+            document.getElementById('accessCode').value = '';
+            document.getElementById('accessOverlay').style.display = 'none';
+            document.getElementById('mainApp').style.display = 'block';
+            const badge = document.getElementById('terminalBadge');
+            badge.textContent = `📍 ${terminalTipoTxt(terminalSel)}: ${terminalSel.nombre}`;
+            badge.style.display = 'inline-flex';
+            document.getElementById('reservasTopTerminal').textContent = ` · ${terminalSel.nombre}`;
+        }
+
+        // Pasa la terminal de la sesión al REGISTRO MASIVO (iframe), que la fija en su cabecera
+        function enviarTerminalAlMasivo(destino) {
+            if (!terminalSel || !destino) return;
+            try { destino.postMessage({ type: 'reservas:terminal', data: terminalSel }, '*'); } catch (e) {}
+        }
+
+        // Alterna el tema claro/oscuro de la pantalla de login
+        function toggleLoginTheme() {
+            const ov = document.getElementById('accessOverlay');
+            ov.classList.toggle('theme-light');
+            localStorage.setItem('uti_login_theme', ov.classList.contains('theme-light') ? 'light' : 'dark');
+        }
+
+        // ---- LISTA RESERVAS (vista integrada) ----
+        function abrirListaReservas() {
+            const view = document.getElementById('reservasView');
+            const iframe = document.getElementById('reservasIframe');
+            // Cargar el contenido solo la primera vez
+            if (!iframe.getAttribute('src')) {
+                // 04/10/2026: LISTA RESERVAS abre el REGISTRO MASIVO (antes lista_reservas_embed.html,
+                // que ya no está en WEB_cliente: queda en "Projectos anteriores")
+                iframe.setAttribute('src', 'registros masivos/REGISTRO MASIVO.html');
+            } else {
+                // Si ya estaba cargado, pedir que re-detecte el Propósito según la lista
+                try { iframe.contentWindow.postMessage({ type: 'reservas:detectMode' }, '*'); } catch(e) {}
+                // 04/10/2026: recuerda la terminal de la sesión (la primera vez la pide el propio masivo)
+                enviarTerminalAlMasivo(iframe.contentWindow);
+            }
+            view.classList.add('active');
+            window.scrollTo({top: 0, behavior: 'smooth'});
+        }
+
+        function cerrarListaReservas() {
+            document.getElementById('reservasView').classList.remove('active');
+            window.scrollTo({top: 0, behavior: 'smooth'});
+        }
+
+        // Mensajes desde el iframe de la Lista de Reservas (file:// bloquea el acceso
+        // directo entre marcos, por eso se comunica vía postMessage).
+        window.addEventListener('message', function(e) {
+            const msg = e.data;
+            if (!msg || typeof msg !== 'object') return;
+            if (msg.type === 'reservas:cerrar') {
+                cerrarListaReservas();
+            } else if (msg.type === 'reservas:genqr') {
+                generarQRDesdeFicha(msg.data || {});
+            } else if (msg.type === 'reservas:genqrfila') {
+                // 04/10/2026: QR de una fila del REGISTRO MASIVO. El payload ya viene construido
+                // (crDatosQR()); se pinta con el mismo reporte que GENERAR ENTRADA/SALIDA.
+                generarQRDesdeFilaMasiva(msg.data || {});
+            } else if (msg.type === 'reservas:pideadr') {
+                // 04/10/2026: el REGISTRO MASIVO pide el catálogo ADR si le faltara datos/adr_datos.js
+                try {
+                    const lista = JSON.parse(document.getElementById('adrData').textContent);
+                    if (e.source) e.source.postMessage({ type: 'reservas:adrdata', data: lista }, '*');
+                } catch (err) { console.error('reservas:pideadr:', err); }
+            } else if (msg.type === 'reservas:pideterminal') {
+                // 04/10/2026: el REGISTRO MASIVO pide la terminal/estación de la sesión al cargar
+                enviarTerminalAlMasivo(e.source);
+            }
+        });
+
+        // 04/10/2026: reporte QR de una fila del REGISTRO MASIVO (ENTRADA o SALIDA según su tipo).
+        // No reconstruye el payload: se usa tal cual lo manda el registro masivo.
+        function generarQRDesdeFilaMasiva(d) {
+            try {
+                if (!d || !d.contenedor) return;
+                const tipo = String(d.tipo || '').toUpperCase().indexOf('SALIDA') !== -1 ? 'salida' : 'entrada';
+                cerrarListaReservas();
+                document.getElementById('welcomeScreen').style.display = 'none';
+                currentFormType = tipo;
+                ultimoDataQR = d;
+                generarReporte(d, tipo);
+            } catch (e) {
+                console.error('generarQRDesdeFilaMasiva:', e);
+            }
+        }
+
+        // Genera el reporte QR (igual que REGISTRO DE ENTRADA) a partir de los datos
+        // de una ficha de la Lista de Reservas (llamada desde el iframe embebido).
+        function generarQRDesdeFicha(d) {
+            try {
+                cerrarListaReservas();
+                document.getElementById('welcomeScreen').style.display = 'none';
+                currentFormType = 'entrada';
+                const dataQR = {
+                    tipo: "REGISTRO ENTRADA",
+                    cliente: (d.cliente || '').toUpperCase(),
+                    conductor: (d.conductor || '').toUpperCase(),
+                    matricula: (d.matricula || '').toUpperCase(),
+                    contenedor: (d.contenedor || '').toUpperCase(),
+                    localizador: d.localizador ? d.localizador.toUpperCase() : null,
+                    pies: d.pies,
+                    destino: d.destino,
+                    tara: d.tara,
+                    peso: d.cargado ? (d.peso || "0") : "0",
+                    cargado: !!d.cargado,
+                    adr: (d.adr && d.adr.activo)
+                        ? { activo: true, onu: (d.adr.onu || '').toUpperCase(), clase: (d.adr.clase || '').toUpperCase() }
+                        : { activo: false, onu: "", clase: "" },
+                    fecha: d.fecha || null,
+                    timestamp: new Date().toISOString()
+                };
+                ultimoDataQR = dataQR;
+                generarReporte(dataQR, 'entrada');
+            } catch (e) {
+                console.error('generarQRDesdeFicha:', e);
+            }
+        }
+
+        function showForm(type) {
+            currentFormType = type;
+            document.getElementById('welcomeScreen').style.display = 'none';
+            if (type === 'entrada') {
+                document.getElementById('formEntrada').classList.add('active');
+                document.getElementById('formSalida').classList.remove('active');
+            } else if (type === 'salida') {
+                document.getElementById('formSalida').classList.add('active');
+                document.getElementById('formEntrada').classList.remove('active');
+            }
+            window.scrollTo({top: 0, behavior: 'smooth'});
+        }
+
+        function goBack() {
+            document.getElementById('formEntrada').classList.remove('active');
+            document.getElementById('formSalida').classList.remove('active');
+            document.getElementById('reportSection').style.display = 'none';
+            document.getElementById('welcomeScreen').style.display = 'flex';
+            document.getElementById('alertBox').style.display = 'none';
+            document.getElementById('alertBoxSalida').style.display = 'none';
+            window.scrollTo({top: 0, behavior: 'smooth'});
+        }
+
+        function volverAlFormulario() {
+            document.getElementById('reportSection').style.display = 'none';
+            if (currentFormType === 'entrada') {
+                document.getElementById('formEntrada').classList.add('active');
+            } else if (currentFormType === 'salida') {
+                document.getElementById('formSalida').classList.add('active');
+            }
+            window.scrollTo({top: 0, behavior: 'smooth'});
+        }
+
+        function limitarLongitud(input, maxLength, maxValor) {
+            let valor = input.value;
+            if (valor.length > maxLength) {
+                input.value = valor.slice(0, maxLength);
+            }
+            let num = parseInt(input.value);
+            if (!isNaN(num) && num > maxValor) {
+                input.value = maxValor;
+            }
+            if (input.value < 0) input.value = 0;
+        }
+
+        // Eventos DOM
+        document.addEventListener('DOMContentLoaded', () => {
+            // Para todos los inputs de texto en ambos formularios, agregar evento input que convierta a mayúsculas
+            const inputsTexto = document.querySelectorAll('#registroEntradaForm input[type="text"], #registroSalidaForm input[type="text"]');
+            inputsTexto.forEach(input => {
+                input.addEventListener('input', function() { aplicarMayusculas(this); });
+            });
+
+            // ENTRADA toggles
+            const cargadoToggleEntrada = document.getElementById('contenedorCargadoEntrada');
+            const cargadoContainerEntrada = document.getElementById('cargadoToggleEntrada');
+            if (cargadoToggleEntrada) {
+                cargadoToggleEntrada.addEventListener('change', (e) => {
+                    document.getElementById('pesoCargaGroupEntrada').style.display = e.target.checked ? 'block' : 'none';
+                    if (e.target.checked) cargadoContainerEntrada.classList.add('cargado');
+                    else cargadoContainerEntrada.classList.remove('cargado');
+                });
+            }
+            const adrToggleEntrada = document.getElementById('tieneAdrEntrada');
+            const adrContainerEntrada = document.getElementById('adrToggleEntrada');
+            if (adrToggleEntrada) {
+                adrToggleEntrada.addEventListener('change', (e) => {
+                    const show = e.target.checked ? 'block' : 'none';
+                    document.getElementById('numeroONUGroupEntrada').style.display = show;
+                    document.getElementById('codigoPeligroGroupEntrada').style.display = show;
+                });
+            }
+            // Autocompletado ONU -> Clase
+            setupOnuAutocomplete('numeroONUEntrada', 'onuSuggestionsEntrada', 'codigoPeligroEntrada');
+            // SALIDA toggle
+            const cargadoToggleSalida = document.getElementById('contenedorCargadoSalida');
+            const cargadoContainerSalida = document.getElementById('cargadoToggleSalida');
+            if (cargadoToggleSalida) {
+                cargadoToggleSalida.addEventListener('change', (e) => {
+                    if (e.target.checked) cargadoContainerSalida.classList.add('cargado');
+                    else cargadoContainerSalida.classList.remove('cargado');
+                });
+            }
+            // Mayúsculas automáticas y limitación de contenedor/matrícula adicional
+            const contenedorEnt = document.getElementById('numeroContenedorEntrada');
+            if(contenedorEnt) contenedorEnt.addEventListener('input', (e) => e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').substring(0,11));
+            const contenedorSal = document.getElementById('numeroContenedorSalida');
+            if(contenedorSal) contenedorSal.addEventListener('input', (e) => e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').substring(0,11));
+            const matriEnt = document.getElementById('matriculaVehiculoEntrada');
+            if(matriEnt) matriEnt.addEventListener('input', (e) => e.target.value = e.target.value.toUpperCase());
+            const matriSal = document.getElementById('matriculaVehiculoSalida');
+            if(matriSal) matriSal.addEventListener('input', (e) => e.target.value = e.target.value.toUpperCase());
+
+            const taraInput = document.getElementById('taraEntrada');
+            if(taraInput) {
+                taraInput.addEventListener('input', function() { limitarLongitud(this, 4, 9999); });
+            }
+            const pesoInput = document.getElementById('pesoCargaEntrada');
+            if(pesoInput) {
+                pesoInput.addEventListener('input', function() { limitarLongitud(this, 5, 45000); });
+            }
+        });
+
+        function generarQREntrada() {
+            let cliente = document.getElementById('clienteEntrada').value.trim().toUpperCase();
+            let conductor = document.getElementById('nombreConductorEntrada').value.trim().toUpperCase();
+            let matricula = document.getElementById('matriculaVehiculoEntrada').value.trim().toUpperCase();
+            let contenedor = document.getElementById('numeroContenedorEntrada').value.trim().toUpperCase();
+            let localizador = document.getElementById('localizadorEntrada').value.trim().toUpperCase();
+            const pies = document.getElementById('piesEntrada').value;
+            const destino = document.getElementById('destinoEntrada').value;
+            const tara = document.getElementById('taraEntrada').value;
+            const isCargado = document.getElementById('contenedorCargadoEntrada').checked;
+            let pesoCarga = isCargado ? document.getElementById('pesoCargaEntrada').value : "0";
+            const hasAdr = document.getElementById('tieneAdrEntrada').checked;
+            const onu = hasAdr ? document.getElementById('numeroONUEntrada').value.trim().toUpperCase() : "";
+            const clase = hasAdr ? document.getElementById('codigoPeligroEntrada').value.trim().toUpperCase() : "";
+
+            if(!cliente || !conductor || !matricula || !contenedor || !pies || !destino || !tara) {
+                showAlert('error', 'Faltan campos obligatorios (Empresa, Conductor, Matrícula, UTI, Tamaño, Destino, Tara)', 'entrada');
+                return;
+            }
+            const taraNum = parseInt(tara);
+            if(isNaN(taraNum) || taraNum < 0 || taraNum > 9999) {
+                showAlert('error', 'La Tara debe ser un número entre 0 y 9999 (máx 4 dígitos)', 'entrada');
+                return;
+            }
+            if(isCargado && pesoCarga) {
+                const pesoNum = parseInt(pesoCarga);
+                if(isNaN(pesoNum) || pesoNum < 0 || pesoNum > 45000) {
+                    showAlert('error', 'El peso de carga debe estar entre 0 y 45000 kg (máx 5 dígitos)', 'entrada');
+                    return;
+                }
+            }
+            if(hasAdr && (!onu || !clase)) {
+                showAlert('error', 'Falta ONU o Clase para ADR', 'entrada');
+                return;
+            }
+
+            const dataQR = {
+                tipo: "REGISTRO ENTRADA",
+                cliente, conductor, matricula, contenedor,
+                localizador: localizador || null,
+                pies, destino,
+                tara, peso: isCargado ? pesoCarga : "0", cargado: isCargado,
+                adr: { activo: hasAdr, onu, clase },
+                timestamp: new Date().toISOString()
+            };
+            ultimoDataQR = dataQR;
+            generarReporte(dataQR, 'entrada');
+        }
+
+        function generarQRSalida() {
+            let cliente = document.getElementById('clienteSalida').value.trim().toUpperCase();
+            let conductor = document.getElementById('nombreConductorSalida').value.trim().toUpperCase();
+            let matricula = document.getElementById('matriculaVehiculoSalida').value.trim().toUpperCase();
+            let contenedor = document.getElementById('numeroContenedorSalida').value.trim().toUpperCase();
+            const isCargado = document.getElementById('contenedorCargadoSalida').checked;
+
+            if(!cliente || !conductor || !matricula || !contenedor) {
+                showAlert('error', 'Faltan campos obligatorios (Empresa, Conductor, Matrícula, UTI)', 'salida');
+                return;
+            }
+            const dataQR = {
+                tipo: "REGISTRO SALIDA",
+                cliente, conductor, matricula, contenedor, cargado: isCargado,
+                timestamp: new Date().toISOString()
+            };
+            ultimoDataQR = dataQR;
+            generarReporte(dataQR, 'salida');
+        }
+
+        function generarReporte(dataQR, tipo) {
+            // 04/10/2026: toda reserva lleva la terminal/estación elegida al acceder. Se fija
+            // aquí, por donde pasan todos los QR (ENTRADA, SALIDA, ficha y registro masivo),
+            // y manda la de la sesión. El escáner de UTI-STOCK no compara esta clave.
+            if (!terminalSel) {
+                showAlert('error', 'Falta la terminal o estación: vuelva a acceder y selecciónela.', tipo);
+                return;
+            }
+            dataQR.terminal = terminalSel.id;
+            currentReportType = tipo;
+            const jsonStr = JSON.stringify(dataQR);
+            const stringUtf8 = unescape(encodeURIComponent(jsonStr));
+            const qr = qrcode(0, 'L');
+            qr.addData(stringUtf8);
+            qr.make();
+            document.getElementById('qrCodeContainer').innerHTML = qr.createImgTag(6, 0);
+
+            if (tipo === 'entrada') {
+                document.getElementById('reportTitle').textContent = "REGISTRO ENTRADA";
+                document.getElementById('reportTitle').className = "entrada";
+                document.getElementById('repPiesBox').style.display = 'flex';
+                document.getElementById('repDestinoBox').style.display = 'flex';
+                document.getElementById('repTaraBox').style.display = 'flex';
+                document.getElementById('repPesoBox').style.display = 'flex';
+                
+                if(dataQR.localizador) {
+                    document.getElementById('repLocalizador').textContent = dataQR.localizador;
+                    document.getElementById('repLocalizadorBox').style.display = 'flex';
+                } else {
+                    document.getElementById('repLocalizadorBox').style.display = 'none';
+                }
+                document.getElementById('repCliente').textContent = dataQR.cliente;
+                document.getElementById('repConductor').textContent = dataQR.conductor || 'No especificado';
+                document.getElementById('repMatricula').textContent = dataQR.matricula || 'No especificada';
+                document.getElementById('repContenedor').textContent = dataQR.contenedor;
+                document.getElementById('repPies').textContent = dataQR.pies + ' PIES';
+                document.getElementById('repEstado').textContent = dataQR.cargado ? 'CARGADO' : 'VACÍO';
+                document.getElementById('repDestino').textContent = dataQR.destino;
+                document.getElementById('repTara').textContent = dataQR.tara;
+                document.getElementById('repPeso').textContent = dataQR.peso;
+
+                const adrElements = [document.getElementById('repADRInfo'), document.getElementById('repONUBox'), document.getElementById('repClaseBox')];
+                if(dataQR.adr && dataQR.adr.activo) {
+                    adrElements.forEach(el => el.style.display = 'flex');
+                    document.getElementById('repONU').textContent = dataQR.adr.onu;
+                    document.getElementById('repClase').textContent = dataQR.adr.clase;
+                } else {
+                    adrElements.forEach(el => el.style.display = 'none');
+                }
+                const destinoFinalBox = document.getElementById('repDestinoFinalBox');
+                if(destinoFinalBox) destinoFinalBox.style.display = 'none';
+            } 
+            else if (tipo === 'salida') {
+                document.getElementById('reportTitle').textContent = "REGISTRO SALIDA";
+                document.getElementById('reportTitle').className = "salida";
+                document.getElementById('repLocalizadorBox').style.display = 'none';
+                document.getElementById('repPiesBox').style.display = 'none';
+                document.getElementById('repDestinoBox').style.display = 'none';
+                document.getElementById('repTaraBox').style.display = 'none';
+                document.getElementById('repPesoBox').style.display = 'none';
+                document.getElementById('repADRInfo').style.display = 'none';
+                document.getElementById('repONUBox').style.display = 'none';
+                document.getElementById('repClaseBox').style.display = 'none';
+                
+                document.getElementById('repCliente').textContent = dataQR.cliente;
+                document.getElementById('repConductor').textContent = dataQR.conductor || 'No especificado';
+                document.getElementById('repMatricula').textContent = dataQR.matricula || 'No especificada';
+                document.getElementById('repContenedor').textContent = dataQR.contenedor;
+                document.getElementById('repEstado').textContent = dataQR.cargado ? 'CARGADO' : 'VACÍO';
+            }
+            // 04/10/2026: terminal/estación en el reporte (pantalla, imagen e impresión)
+            document.getElementById('repTerminal').textContent = `${terminalTipoTxt(terminalSel)} · ${terminalSel.nombre}`;
+
+            const now = new Date();
+            document.getElementById('reportTimestamp').textContent = `Generado: ${now.toLocaleDateString()} - ${now.toLocaleTimeString()}`;
+            document.getElementById('formEntrada').classList.remove('active');
+            document.getElementById('formSalida').classList.remove('active');
+            document.getElementById('reportSection').style.display = 'block';
+            window.scrollTo({top: 0, behavior: 'smooth'});
+            showAlert('success', `¡Código QR de ${tipo.toUpperCase()} generado!`, tipo);
+        }
+
+        // Comprueba que el reporte actual tenga los campos obligatorios
+        // (Empresa, Conductor, Matrícula y UTI) antes de imprimir, descargar
+        // la imagen o exportar a CSV. Si falta alguno, avisa y aborta.
+        function reporteCompleto() {
+            const d = ultimoDataQR;
+            if (!d) {
+                showAlert('error', 'No hay datos para procesar', currentReportType);
+                return false;
+            }
+            const faltan = [];
+            if (!String(d.cliente    || '').trim()) faltan.push('Empresa');
+            if (!String(d.conductor  || '').trim()) faltan.push('Conductor');
+            if (!String(d.matricula  || '').trim()) faltan.push('Matrícula');
+            if (!String(d.contenedor || '').trim()) faltan.push('UTI');
+            if (!String(d.terminal   || '').trim()) faltan.push('Terminal/Estación');   // 04/10/2026
+            if (faltan.length) {
+                showAlert('error', 'Faltan campos obligatorios: ' + faltan.join(', '), currentReportType);
+                return false;
+            }
+            return true;
+        }
+
+        function exportarCSV() {
+            if (!reporteCompleto()) return;
+            const data = ultimoDataQR;
+            let filas = [];
+            
+            function formatearFechaHora(isoString) {
+                const fecha = new Date(isoString);
+                const dia = String(fecha.getDate()).padStart(2, '0');
+                const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+                const anio = fecha.getFullYear();
+                const horas = String(fecha.getHours()).padStart(2, '0');
+                const minutos = String(fecha.getMinutes()).padStart(2, '0');
+                const segundos = String(fecha.getSeconds()).padStart(2, '0');
+                return `${dia}/${mes}/${anio}, ${horas}:${minutos}:${segundos}`;
+            }
+            
+            const fechaFormateada = formatearFechaHora(data.timestamp);
+            // 04/10/2026: columna de la terminal/estación (nombre) tras el tipo
+            let cabeceras = ["Tipo", "Terminal/Estación", "Cliente", "Conductor", "Matrícula", "Contenedor", "Fecha/Hora"];
+            let valores = [data.tipo, terminalNombre(data.terminal), data.cliente, data.conductor || "", data.matricula || "", data.contenedor, fechaFormateada];
+            
+            if (data.tipo === "REGISTRO ENTRADA") {
+                cabeceras.push("Localizador", "Tamaño(pies)", "Destino", "Tara(kg)", "Cargado", "PesoCarga(kg)", "ADR", "ONU", "Clase");
+                valores.push(data.localizador || "", data.pies, data.destino, data.tara, data.cargado ? "SI" : "NO", data.peso, data.adr?.activo ? "SI" : "NO", data.adr?.onu || "", data.adr?.clase || "");
+            } else {
+                cabeceras.push("Cargado");
+                valores.push(data.cargado ? "SI" : "NO");
+            }
+            
+            filas.push(cabeceras);
+            filas.push(valores);
+            
+            let csvContent = filas.map(row => row.map(cell => {
+                let celda = String(cell);
+                if (celda.includes(',') || celda.includes('"') || celda.includes('\n')) {
+                    celda = '"' + celda.replace(/"/g, '""') + '"';
+                }
+                return celda;
+            }).join(',')).join('\n');
+            
+            const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.href = url;
+            const nombreArchivo = `${nombreArchivoReporte()}.csv`;
+            link.setAttribute("download", nombreArchivo);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            showAlert('success', 'Archivo CSV exportado', currentReportType);
+        }
+
+        function limpiarFormulario(tipo) {
+            if (tipo === 'entrada') {
+                document.getElementById('registroEntradaForm').reset();
+                document.getElementById('pesoCargaGroupEntrada').style.display = 'none';
+                document.getElementById('numeroONUGroupEntrada').style.display = 'none';
+                document.getElementById('codigoPeligroGroupEntrada').style.display = 'none';
+                document.getElementById('cargadoToggleEntrada').classList.remove('cargado');
+                document.getElementById('alertBox').style.display = 'none';
+            } else if (tipo === 'salida') {
+                document.getElementById('registroSalidaForm').reset();
+                document.getElementById('cargadoToggleSalida').classList.remove('cargado');
+                document.getElementById('alertBoxSalida').style.display = 'none';
+            }
+        }
+
+        function descargarReporteImagen() {
+            if (!reporteCompleto()) return;
+            const elemento = document.getElementById("printableArea");
+            const btn = document.querySelector('.btn-warning');
+            const original = btn.innerHTML;
+            btn.innerHTML = '⏳ Procesando...';
+            html2canvas(elemento, { scale: 2, backgroundColor: "#ffffff", useCORS: true }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = `${nombreArchivoReporte()}.png`;
+                link.href = canvas.toDataURL("image/png");
+                link.click();
+                btn.innerHTML = original;
+            }).catch(err => {
+                console.error(err);
+                showAlert('error', 'Error al crear imagen', currentReportType);
+                btn.innerHTML = original;
+            });
+        }
+
+        // Construye el nombre base del archivo: UTI_<TIPO>_<contenedor>-DD-MM-YYYY_HH-MM-SS
+        function nombreArchivoReporte() {
+            const tipo = currentReportType === 'entrada' ? 'ENTRADA' : 'SALIDA';
+            const contenedor = (document.getElementById('repContenedor').textContent || '').trim();
+            const now = new Date();
+            const p = (n) => String(n).padStart(2, '0');
+            const fecha = `${p(now.getDate())}-${p(now.getMonth() + 1)}-${now.getFullYear()}`;
+            const hora = `${p(now.getHours())}-${p(now.getMinutes())}-${p(now.getSeconds())}`;
+            return `UTI_${tipo}_${contenedor}-${fecha}_${hora}`;
+        }
+
+        function imprimirReporte() {
+            if (!reporteCompleto()) return;
+            const tituloOriginal = document.title;
+            document.title = nombreArchivoReporte();
+
+            const restaurar = () => {
+                document.title = tituloOriginal;
+                window.removeEventListener('afterprint', restaurar);
+            };
+            window.addEventListener('afterprint', restaurar);
+
+            window.print();
+            // Respaldo por si 'afterprint' no se dispara en algunos navegadores
+            setTimeout(restaurar, 1000);
+        }
+
+        function showAlert(type, msg, formType) {
+            let alertDiv = formType === 'entrada' ? document.getElementById('alertBox') : document.getElementById('alertBoxSalida');
+            if(!alertDiv) return;
+            alertDiv.className = `alert alert-${type}`;
+            alertDiv.textContent = msg;
+            alertDiv.style.display = 'block';
+            if(type === 'success') setTimeout(() => alertDiv.style.display = 'none', 3000);
+        }
+    </script>
+    <script src="i18n.js"></script>
+</body>
+</html>
