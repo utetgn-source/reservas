@@ -1,0 +1,1759 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Formulario de Reservas de Contenedores</title>
+    <!-- Librerías locales (QR y Excel). 29/09/2026: antes por CDN; el sistema debe funcionar sin internet.
+         qrcode.min.js es qrcode-generator, la misma que usa el reporte de GENERAR ENTRADA/SALIDA -->
+    <script src="../libs/qrcode.min.js"></script>
+    <script src="../libs/xlsx.full.min.js"></script>
+    <!-- 29/09/2026: ADR y destinos dentro de WEB_cliente (la web trabaja sin servidor) -->
+    <script src="../datos/adr_datos.js"></script>
+    <script src="../datos/destinos_datos.js"></script>
+    <script src="../datos/siglas_datos.js"></script>
+    <!-- 04/10/2026: terminales y estaciones (toda reserva se hace para una de ellas) -->
+    <script src="../datos/terminales_datos.js"></script>
+
+    <style>
+        :root {
+            --navy-blue: #1C355E;
+            --red-accent: #C00000;
+            --pink-bg: #FCE8E8;
+            --light-gray: #F4F4F4;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #ffffff;
+            font-size: 12px;
+        }
+
+        /* Título principal */
+        .main-title {
+            text-align: center;
+            color: var(--navy-blue);
+            font-size: 20px;
+            font-weight: bold;
+            margin-top: 0;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* ===== Cabecera de datos (EMPRESA / MATRÍCULA / CONDUCTOR / FECHA) ===== */
+        .header-fields {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+            gap: 10px;
+            background-color: var(--light-gray);
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 10px 15px;
+            margin-bottom: 10px;
+        }
+
+        .header-fields .field {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .header-fields label {
+            font-size: 10px;
+            font-weight: bold;
+            color: var(--navy-blue);
+            text-transform: uppercase;
+            letter-spacing: .5px;
+        }
+
+        .header-fields input {
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            font-size: 12px;
+            background: #fff;
+        }
+
+        .header-fields input:focus {
+            outline: none;
+            border-color: var(--navy-blue);
+        }
+
+        /* ===== Cabecera SOLO para impresión ===== */
+        .print-header {
+            display: none;
+            border: 1px solid #000;
+            padding: 8px 10px;
+            margin-bottom: 12px;
+        }
+
+        .print-header .ph-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4px 18px;
+            font-size: 11px;
+        }
+
+        .print-header .ph-grid span {
+            display: block;
+        }
+
+        /* Barra superior de totales */
+        .top-bar {
+            background-color: var(--light-gray);
+            padding: 10px 15px;
+            border-radius: 5px 5px 0 0;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            font-weight: bold;
+            color: var(--navy-blue);
+            border-bottom: 2px solid #ccc;
+        }
+
+        /* Grupo izquierdo: Nº registros + Totales */
+        .top-bar .left-group {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .top-bar .totals {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .top-bar .totals span {
+            font-size: 11px;
+        }
+
+        /* Control para añadir N registros */
+        .records-ctrl {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+        }
+
+        .records-ctrl input {
+            width: 65px;
+            padding: 4px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            font-size: 11px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .records-ctrl button {
+            background-color: var(--navy-blue);
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            padding: 5px 10px;
+            font-size: 10px;
+            font-weight: bold;
+            text-transform: uppercase;
+            cursor: pointer;
+        }
+
+        .records-ctrl button:hover {
+            background-color: #2a4a80;
+        }
+
+        /* Botones de la barra superior (iconos) */
+        .top-bar .icon-btns {
+            display: flex;
+            gap: 8px;
+        }
+
+        .top-bar .icon-btn {
+            background: #fff;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 4px 10px;
+            font-size: 16px;
+            line-height: 1;
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s, transform 0.1s;
+        }
+
+        .top-bar .icon-btn:hover {
+            background: var(--pink-bg);
+            border-color: var(--navy-blue);
+        }
+
+        .top-bar .icon-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Contenedor de la tabla */
+        .table-container {
+            overflow-x: auto;
+            border: 1px solid #ccc;
+            border-top: none;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            white-space: nowrap;
+        }
+
+        th {
+            background-color: var(--navy-blue);
+            color: white;
+            padding: 8px 5px;
+            text-align: left;
+            font-size: 10px;
+            font-weight: normal;
+            text-transform: uppercase;
+        }
+
+        td {
+            background-color: var(--pink-bg);
+            padding: 4px;
+            border-bottom: 1px solid #fff;
+            border-right: 1px solid #fff;
+        }
+
+        /* Estilos de los inputs dentro de la tabla */
+        input, select {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 4px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            font-size: 11px;
+            background-color: #fff;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--navy-blue);
+        }
+
+        /* Estilos específicos de columnas */
+        .col-num { width: 34px; text-align: center; }
+        .col-x { width: 30px; text-align: center; }
+        .col-qr { width: 30px; text-align: center; }
+        .row-num { font-weight: bold; color: var(--navy-blue); font-size: 11px; }
+        .ref-input { width: 120px; }
+        .small-input { width: 60px; }
+        .medium-input { width: 80px; }
+        .dest-input { width: 130px; }
+
+        /* ===== Ocultar la columna REEXPEDICIÓN (en pantalla e impresión) ===== */
+        .col-reexpedicion { display: none !important; }
+
+        /* Botones de acción dentro de la fila */
+        .btn-icon {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            padding: 0;
+        }
+        .btn-delete { color: var(--red-accent); }
+        .btn-qr { color: var(--navy-blue); }
+
+        /* Barra inferior de botones */
+        .bottom-bar {
+            margin-top: 15px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        button.action-btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+            color: white;
+            text-transform: uppercase;
+            font-size: 11px;
+        }
+
+        .btn-add { background-color: var(--navy-blue); }
+
+        .btn-clear {
+            background-color: white !important;
+            color: var(--red-accent) !important;
+            border: 1px solid var(--red-accent) !important;
+            font-weight: bold;
+        }
+
+        .btn-csv { background-color: #217346; }
+        .btn-xlsx { background-color: #1D6F42; }
+        .btn-print { background-color: #555; }
+        .btn-qr-all { background-color: #E67E22; }
+        .btn-import { background-color: #4A90E2; }
+
+        /* Modal para QR */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .qr-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .qr-item {
+            border: 1px solid #ccc;
+            padding: 10px;
+            background: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* ===== 29/09/2026: SALIDA solo muestra Fecha, Hora prevista y Ref. ===== */
+        tr.fila-salida td.solo-entrada > * { visibility: hidden; }
+
+        /* Campo obligatorio vacío o no válido */
+        /* 04/10/2026: selector TERMINAL / ESTACIÓN de la cabecera (fijado por la web principal) */
+        .header-fields select {
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            font-size: 12px;
+            background: #fff;
+        }
+        .header-fields select:disabled {
+            background: #eef2f7;
+            color: var(--navy-blue);
+            font-weight: bold;
+            opacity: 1;
+            cursor: not-allowed;
+        }
+
+        .campo-error,
+        .header-fields input.campo-error,
+        .header-fields select.campo-error {
+            border-color: var(--red-accent) !important;
+            background-color: #fff0f0 !important;
+            box-shadow: 0 0 0 1px var(--red-accent);
+        }
+        .req { color: var(--red-accent); margin-left: 2px; }
+
+        /* 29/09/2026: botón EXPORT. TECO y menú de formato de los iconos 📁 / ⬇️ */
+        .btn-teco { background-color: #0E7C86; }
+        #cr-fmt-menu {
+            position: fixed; z-index: 2000; display: none;
+            background: #fff; border: 1px solid #ccc; border-radius: 6px;
+            box-shadow: 0 6px 18px rgba(0,0,0,.18); padding: 6px; min-width: 150px;
+        }
+        #cr-fmt-menu .cr-fmt-tit {
+            font-size: 10px; font-weight: bold; color: var(--navy-blue);
+            text-transform: uppercase; letter-spacing: .5px; padding: 4px 8px 6px;
+            border-bottom: 1px solid #eee; margin-bottom: 4px;
+        }
+        #cr-fmt-menu button {
+            display: flex; align-items: center; gap: 8px; width: 100%;
+            background: none; border: none; border-radius: 4px; padding: 7px 8px;
+            font-size: 12px; font-weight: bold; color: #333; cursor: pointer; text-align: left;
+        }
+        #cr-fmt-menu button:hover { background: var(--pink-bg); color: var(--navy-blue); }
+        #cr-fmt-menu .cr-fmt-tag {
+            font-size: 10px; color: #fff; border-radius: 3px; padding: 1px 6px; min-width: 34px; text-align: center;
+        }
+        #cr-fmt-menu .tag-csv  { background: #217346; }
+        #cr-fmt-menu .tag-xlsx { background: #1D6F42; }
+
+        /* Toasts (esquina superior derecha, cierre a los 4 s y con ×) */
+        #cr-toasts {
+            position: fixed; top: 16px; right: 16px; z-index: 9999;
+            display: flex; flex-direction: column; gap: 8px; max-width: 380px;
+        }
+        .cr-toast {
+            display: flex; align-items: flex-start; gap: 10px;
+            padding: 10px 12px; border-radius: 6px; color: #fff;
+            font-size: 12px; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,.25);
+            animation: crToastIn .25s ease-out; transition: opacity .3s, transform .3s;
+        }
+        .cr-toast.error   { background: var(--red-accent); }
+        .cr-toast.success { background: #27AE60; }
+        .cr-toast.info    { background: var(--navy-blue); }
+        .cr-toast.saliendo { opacity: 0; transform: translateX(40px); }
+        .cr-toast .cr-toast-x {
+            margin-left: auto; background: none; border: none; color: #fff;
+            font-size: 16px; line-height: 1; cursor: pointer; padding: 0 2px;
+        }
+        @keyframes crToastIn { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: none; } }
+
+        /* Estilos para impresión */
+        @media print {
+            body { background: white; padding: 0; }
+            .main-title { display: block; text-align: center; margin-bottom: 15px; }
+            .header-fields,
+            .top-bar,
+            .bottom-bar,
+            .records-ctrl,
+            .btn-icon { display: none !important; }
+
+            .print-header { display: block !important; }
+
+            .col-x, .col-qr { display: none !important; }
+            .col-reexpedicion { display: none !important; } /* Ocultar también en impresión */
+
+            table { border: 1px solid #000; }
+            th, td { border: 1px solid #000; background: white !important; color: black !important; }
+            th { background: #e8e8e8 !important; }
+            input, select { border: none; background: transparent; appearance: none; -webkit-appearance: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Título Principal -->
+    <h1 class="main-title">REGISTRO ENTRADA / SALIDA</h1>
+
+    <!-- Inputs ocultos para importar archivos -->
+    <input type="file" id="csvInput" accept=".csv" style="display:none;" onchange="handleFileImport(event)">
+    <input type="file" id="xlsxInput" accept=".xlsx, .xls" style="display:none;" onchange="handleFileImport(event)">
+
+    <!-- Cabecera de datos -->
+    <div class="header-fields">
+        <!-- 04/10/2026: todas las reservas de la lista son para esta terminal/estación -->
+        <div class="field">
+            <label for="terminal">Terminal / Estación<span class="req">*</span></label>
+            <select id="terminal" title="Terminal o estación de todas las reservas de la lista"></select>
+        </div>
+        <div class="field">
+            <label for="empresa">Empresa<span class="req">*</span></label>
+            <input type="text" id="empresa" placeholder="Nombre de la empresa" maxlength="14" title="Máx. 14 caracteres: letras, números y espacios">
+        </div>
+        <div class="field">
+            <label for="matricula">Matrícula del vehículo<span class="req">*</span></label>
+            <input type="text" id="matricula" placeholder="0000XXX" maxlength="7" title="Máx. 7 caracteres: letras y números">
+        </div>
+        <div class="field">
+            <label for="conductor">Nombre conductor<span class="req">*</span></label>
+            <input type="text" id="conductor" placeholder="Nombre y apellidos" maxlength="12" title="Máx. 12 caracteres: letras, números y espacios">
+        </div>
+        <div class="field">
+            <label for="fecha-actuacion">Fecha de actuación<span class="req">*</span></label>
+            <input type="date" id="fecha-actuacion">
+        </div>
+    </div>
+
+    <!-- Cabecera que se muestra SOLO al imprimir -->
+    <div class="print-header" id="printHeader">
+        <div class="ph-grid">
+            <span><strong>TERMINAL / ESTACIÓN:</strong> <span id="ph-terminal">—</span></span>
+            <span><strong>EMPRESA:</strong> <span id="ph-empresa">—</span></span>
+            <span><strong>MATRÍCULA DEL VEHÍCULO:</strong> <span id="ph-matricula">—</span></span>
+            <span><strong>NOMBRE CONDUCTOR:</strong> <span id="ph-conductor">—</span></span>
+            <span><strong>FECHA DE ACTUACIÓN:</strong> <span id="ph-fecha">—</span></span>
+            <span><strong>TOTAL REGISTROS:</strong> <span id="ph-total">0</span></span>
+        </div>
+    </div>
+
+    <!-- Barra Superior -->
+    <div class="top-bar">
+        <!-- Grupo izquierdo: Nº registros + Totales -->
+        <div class="left-group">
+            <div class="records-ctrl">
+                <label for="num-registros">Nº registros</label>
+                <input type="number" id="num-registros" min="1" max="200" value="1">
+                <button type="button" onclick="addMultipleRows()">Añadir</button>
+            </div>
+
+            <div class="totals">
+                <span id="total-count">0 TOTAL</span>
+                <span id="count-entrada" style="color: #27AE60;">0 ENTRADA</span>
+                <span id="count-salida" style="color: #C0392B;">0 SALIDA</span>
+                <span id="count-cargados" style="color: var(--navy-blue);">0 CARGADOS</span>
+                <span id="count-lona" style="color: #E67E22;">0 LONA</span>
+            </div>
+        </div>
+
+        <div class="icon-btns">
+            <!-- 29/09/2026: cada icono abre un menú para elegir el formato (CSV o XLSX) -->
+            <button type="button" class="icon-btn" onclick="crMenuFormato(this, 'exportar')" title="Exportar el listado (CSV o XLSX)">
+                📁
+            </button>
+            <button type="button" class="icon-btn" onclick="crMenuFormato(this, 'importar')" title="Importar un listado (CSV o XLSX)">
+                ⬇️
+            </button>
+        </div>
+    </div>
+
+    <!-- Tabla de Registros -->
+    <div class="table-container">
+        <table id="reservas-table">
+            <thead>
+                <tr>
+                    <th class="col-x">X</th>
+                    <th class="col-num">Nº</th>
+                    <th>Actuación</th>
+                    <th>Fecha</th>
+                    <th>Hora Prevista</th>
+                    <th title="Obligatorio">Ref. *</th>
+                    <th title="Obligatorio en ENTRADA">Nº Pies *</th>
+                    <th title="Obligatorio en ENTRADA">Tara *</th>
+                    <th title="Opcional: en blanco o 0 = VACÍO">Peso</th>
+                    <th>ONU</th>
+                    <th>Clase</th>
+                    <th>Localizador</th>
+                    <th title="Obligatorio en ENTRADA">Destino *</th>
+                    <!-- 29/09/2026: QR al final, a la derecha de DESTINO (antes tras Nº) -->
+                    <th class="col-qr">QR</th>
+                    <!-- Columna REEXPEDICIÓN OCULTA: para volver a mostrarla, elimina la clase col-reexpedicion -->
+                    <th class="col-reexpedicion">Reexpedición</th>
+                </tr>
+            </thead>
+            <tbody id="table-body">
+                <!-- Las filas se generarán dinámicamente con JS -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Barra Inferior de Acciones -->
+    <div class="bottom-bar">
+        <div class="btn-group">
+            <button class="action-btn btn-add" onclick="addRow()">+ AÑADIR CONTENEDOR</button>
+            <button class="action-btn btn-clear" onclick="clearAll()">LIMPIAR TODO</button>
+        </div>
+        <div class="btn-group">
+            <!-- 29/09/2026: ocultos (las funciones siguen vivas; se accede por los iconos 📁 y ⬇️) -->
+            <button class="action-btn btn-import" onclick="triggerImport('csv')" style="display:none">IMPORTAR CSV</button>
+            <button class="action-btn btn-import" onclick="triggerImport('xlsx')" style="display:none">IMPORTAR XLSX</button>
+            <button class="action-btn btn-csv" onclick="exportCSV()" style="display:none">EXPORTAR CSV</button>
+            <button class="action-btn btn-xlsx" onclick="exportXLSX()" style="display:none">EXPORTAR XLSX</button>
+            <button class="action-btn btn-teco" onclick="exportTECO()" title="Exportar la lista a CSV">EXPORT. TECO</button>
+            <button class="action-btn btn-print" onclick="printTable()">IMPRIMIR</button>
+            <button class="action-btn btn-qr-all" onclick="generateAllQR()">GENERAR QR (TODOS)</button>
+        </div>
+    </div>
+
+    <!-- Modal para mostrar los QR -->
+    <div id="qrModal" class="modal">
+        <div class="modal-content">
+            <h3>Códigos QR Generados</h3>
+            <div id="qrContainer" class="qr-grid"></div>
+            <br>
+            <button class="action-btn btn-clear" onclick="closeModal()">CERRAR</button>
+        </div>
+    </div>
+
+    <script>
+        // Base de datos simulada de ADR/ONU (Número ONU -> Clase)
+        const ADR_DATABASE = {
+            "1203": "3", "1202": "3", "1017": "2", "1789": "8",
+            "1005": "2", "1008": "5.1", "1040": "2.1", "1050": "2.3",
+            "1072": "2.2", "1073": "5.1", "1830": "8", "1263": "3",
+            "1993": "3", "3082": "9", "2055": "39", "1010": "239"
+        };
+
+        // Reglas de autocompletado según el prefijo de la referencia (REF)
+        const REF_RULES = [
+            { prefixes: ['TRFA', 'OMFE'], tara: 6400, pies: 45 },
+            { prefixes: ['COMB'], tara: 4500, pies: 45 },
+            { prefixes: ['SHNU0', 'CINU'], tara: 2800, pies: 30 },
+            { prefixes: ['TRMU54'], tara: 2500, pies: 40 },
+            { prefixes: ['TRMU43'], tara: 3400, pies: 22 },
+            { prefixes: ['AIRU', 'CARU', 'STBU', 'BGBU'], tara: 2200, pies: 20 },
+            { prefixes: ['RICU30'], tara: 4500, pies: 30 },
+            { prefixes: ['RICU2'], tara: 3800, pies: 20 },
+            { prefixes: ['BIAU', 'TCUU'], tara: 3800, pies: 20 },
+            { prefixes: ['TBCA'], tara: 7100, pies: 20 }, // Regla específica para TBCA
+            { prefixes: ['ECBU', 'PVDU', 'TLLU', 'BOLU', 'ACOU', 'ELLU', 'XXLU'], tara: 4300, pies: 45 }
+        ];
+
+        // 29/09/2026: mismos destinos y grupos que el selector «Destino Final» de GENERAR ENTRADA
+        // (index.html). Si no coinciden, la reserva no casa con el escáner.
+        // La fuente es datos/destinos_datos.js (compartido con index.html); la lista de
+        // abajo es solo el respaldo por si ese archivo faltara.
+        const DESTINOS_GRUPOS = (Array.isArray(window.UTI_DESTINOS_GRUPOS) && window.UTI_DESTINOS_GRUPOS.length)
+            ? window.UTI_DESTINOS_GRUPOS : [
+            { label: '🌍 INTERNACIONALES', items: ['LUBA', 'COLONIA', 'PORTUGAL'] },
+            { label: '🇪🇸 NACIONALES', items: ['SAN ROQUE', 'SEVILLA-LA NEGRILLA', 'MADRID-ABROÑIGAL', 'VIGO',
+                                              'BILBAO-NACIONAL', 'TORRELAVEGA', 'PUERTOLLANO', 'BILBAO'] },
+            { label: '🏭 SECTOR ESPECIAL', items: ['BILBAO-MEDW.', 'SEVILLA-ACOU.', 'ZARAGOZA-MEDW.'] },
+            { label: '🏗️ ACCIÓN GRÚA', items: ['MOVIMIENTO GRUA'] },
+            { label: '📋 STOCK', items: ['STOCK CLIENTE', 'STOCK CALENTAR', 'STOCK ESPECIAL', 'STOCK PORTUGAL'] }
+        ];
+        const DESTINOS = DESTINOS_GRUPOS.reduce((acc, g) => acc.concat(g.items), []);
+
+        // Escapado de HTML para valores interpolados (datos importados de archivos)
+        function crEsc(v) {
+            return String(v == null ? '' : v)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+
+        // ===== 29/09/2026: límites de longitud y caracteres de LISTA RESERVAS =====
+        // Cabecera: letras (con tildes y Ñ) y números; Empresa y Conductor admiten además
+        // espacios (un nombre sin espacios no sirve). Todo en MAYÚSCULAS (Regla 9).
+        const CR_LIMITES = {
+            empresa:   { max: 14, espacios: true },   // 29/09/2026: antes 32
+            matricula: { max: 7,  espacios: false },
+            conductor: { max: 12, espacios: true }    // 29/09/2026: antes 24
+        };
+        function crAlfanum(v, max, espacios) {
+            const re = espacios ? /[^\p{L}\p{N} ]/gu : /[^\p{L}\p{N}]/gu;
+            return String(v == null ? '' : v).toUpperCase().replace(re, '').substring(0, max);
+        }
+
+        // Solo dígitos, con longitud máxima (ONU = 4, Localizador = 6)
+        function crSoloDigitos(v, max) {
+            return String(v == null ? '' : v).replace(/[^0-9]/g, '').substring(0, max);
+        }
+
+        // CLASE: máx. 4 caracteres de números, símbolos y puntuación (sin letras ni espacios).
+        // Excepción: la clase OFICIAL del catálogo ADR para ese ONU se respeta tal cual,
+        // porque las de explosivos llevan letra (1.1D, 1.4S…) y recortarla la falsearía.
+        function crClase(v, onu) {
+            const s = String(v == null ? '' : v).trim().toUpperCase();
+            if (onu && ADR_DATABASE[String(onu)] === s) return s;
+            return s.replace(/[\p{L}\s]/gu, '').substring(0, 4);
+        }
+
+        // Aplica un filtro a un input conservando la posición del cursor
+        function crFiltrarInput(input, filtro) {
+            const antes = input.value;
+            const limpio = filtro(antes);
+            if (limpio === antes) return;
+            const pos = input.selectionStart;
+            input.value = limpio;
+            try {
+                const nueva = Math.max(0, Math.min(limpio.length, pos - (antes.length - limpio.length)));
+                input.setSelectionRange(nueva, nueva);
+            } catch (e) {}
+        }
+
+        // Opciones del selector de destino agrupadas. Un valor fuera de catálogo (p. ej.
+        // importado) se conserva visible para que no se pierda; la validación lo marcará.
+        function destinoOptionsHtml(selected) {
+            let html = '';
+            if (selected && !DESTINOS.includes(selected)) {
+                html += `<option value="${crEsc(selected)}" selected>${crEsc(selected)} (fuera de catálogo)</option>`;
+            }
+            DESTINOS_GRUPOS.forEach(g => {
+                html += `<optgroup label="${crEsc(g.label)}">${createOptions(g.items, selected)}</optgroup>`;
+            });
+            return html;
+        }
+
+        const PIES_OPTIONS = [20, 22, 24, 26, 30, 40, 45];
+
+        // ===== Utilidades de fecha =====
+
+        // Fecha local en formato YYYY-MM-DD (sin desfase UTC)
+        function getLocalDateISO(d = new Date()) {
+            const off = d.getTimezoneOffset();
+            const local = new Date(d.getTime() - off * 60000);
+            return local.toISOString().split('T')[0];
+        }
+
+        // Función para obtener fecha y hora actual formateada
+        function getCurrentDateTime() {
+            const now = new Date();
+            const date = getLocalDateISO(now); // YYYY-MM-DD
+            const time = now.toTimeString().split(' ')[0].substring(0, 5); // HH:MM
+            return { date, time };
+        }
+
+        // Formatear YYYY-MM-DD -> DD/MM/YYYY
+        function formatDateDisplay(iso) {
+            if (!iso) return '—';
+            const parts = iso.split('-');
+            if (parts.length !== 3) return iso;
+            return `${parts[2]}/${parts[1]}/${parts[0]}`;
+        }
+
+        // Función para crear las opciones de los selectores
+        function createOptions(optionsArray, selectedValue = '') {
+            let html = '';
+            optionsArray.forEach(opt => {
+                html += `<option value="${crEsc(opt)}" ${opt == selectedValue ? 'selected' : ''}>${crEsc(opt)}</option>`;
+            });
+            return html;
+        }
+
+        // ===== Construcción de filas =====
+
+        /**
+         * Construye una fila <tr> con los valores indicados.
+         * @param {Object} data Valores opcionales de la fila.
+         */
+        function buildRow(data = {}) {
+            const now = getCurrentDateTime();
+
+            const actuacion    = data.actuacion    || 'ENTRADA';
+            const fecha        = data.fecha        || now.date;
+            const hora         = data.hora         || now.time;
+            const ref          = data.ref          || '';
+            const pies         = data.pies         || '';
+            const tara         = data.tara         || '';
+            const peso         = data.peso         || '';
+            const onu          = data.onu          || '';
+            const clase        = data.clase        || '';
+            const localizador  = data.localizador  || '';
+            const destino      = data.destino      || '';
+            const reexpedicion = data.reexpedicion || '';
+
+            const tr = document.createElement('tr');
+
+            // 29/09/2026: las celdas «solo-entrada» se ocultan cuando la actuación es SALIDA
+            // (onActuacionChange). Los valores se escapan: pueden venir de un archivo importado.
+            tr.innerHTML = `
+                <td class="col-x"><button class="btn-icon btn-delete" onclick="deleteRow(this)">X</button></td>
+                <td class="col-num"><span class="row-num"></span></td>
+                <td>
+                    <select class="actuacion" onchange="onActuacionChange(this)">
+                        <option value="ENTRADA" ${actuacion === 'ENTRADA' ? 'selected' : ''}>ENTRADA</option>
+                        <option value="SALIDA" ${actuacion === 'SALIDA' ? 'selected' : ''}>SALIDA</option>
+                    </select>
+                </td>
+                <td><input type="date" class="fecha" value="${crEsc(fecha)}"></td>
+                <td><input type="time" class="hora" value="${crEsc(hora)}"></td>
+                <td><input type="text" class="ref-input" placeholder="AAAA1234567" maxlength="11" value="${crEsc(ref)}" oninput="handleRefInput(this)" onblur="validateRef(this)"></td>
+                <td class="solo-entrada">
+                    <select class="small-input pies">
+                        <option value="">--</option>
+                        ${createOptions(PIES_OPTIONS, pies)}
+                    </select>
+                </td>
+                <td class="solo-entrada"><input type="number" class="medium-input tara" placeholder="0" value="${crEsc(tara)}" oninput="limitTara(this)"></td>
+                <td class="solo-entrada"><input type="number" class="medium-input peso" placeholder="0" value="${crEsc(peso)}" oninput="limitPeso(this)" title="Opcional: en blanco o 0 = VACÍO"></td>
+                <td class="solo-entrada">
+                    <input type="text" class="medium-input onu" list="onu-list" placeholder="ONU" maxlength="4" inputmode="numeric" title="4 dígitos" value="${crEsc(crSoloDigitos(onu, 4))}" oninput="updateClass(this)">
+                </td>
+                <td class="solo-entrada"><input type="text" class="small-input clase" readonly maxlength="4" value="${crEsc(crClase(clase, crSoloDigitos(onu, 4)))}"></td>
+                <td class="solo-entrada"><input type="text" class="medium-input localizador" placeholder="Numérico" maxlength="6" inputmode="numeric" title="Máx. 6 dígitos" value="${crEsc(crSoloDigitos(localizador, 6))}" oninput="crFiltrarInput(this, v => crSoloDigitos(v, 6))"></td>
+                <td class="solo-entrada">
+                    <select class="destino dest-input">
+                        <option value="">Seleccionar...</option>
+                        ${destinoOptionsHtml(destino)}
+                    </select>
+                </td>
+                <td class="col-qr"><button class="btn-icon btn-qr" onclick="generateSingleQR(this)" title="Generar el reporte con QR de este registro">📱</button></td>
+                <td class="col-reexpedicion">
+                    <select class="reexpedicion dest-input">
+                        <option value="">Seleccionar...</option>
+                        ${createOptions(DESTINOS, reexpedicion)}
+                    </select>
+                </td>
+            `;
+
+            tr.classList.toggle('fila-salida', actuacion === 'SALIDA');
+            return tr;
+        }
+
+        // Función para añadir una nueva fila a la tabla
+        function addRow() {
+            const tbody = document.getElementById('table-body');
+            tbody.appendChild(buildRow());
+            renumberRows();
+            updateStats();
+        }
+
+        // Añadir N registros de golpe según el valor del input
+        function addMultipleRows() {
+            const input = document.getElementById('num-registros');
+            let n = parseInt(input.value, 10);
+
+            if (isNaN(n) || n < 1) {
+                alert("Introduce un número de registros válido (mínimo 1).");
+                input.value = 1;
+                return;
+            }
+            if (n > 200) {
+                alert("El máximo permitido por operación es 200 registros. Se añadirán 200.");
+                n = 200;
+            }
+
+            const tbody = document.getElementById('table-body');
+            const fragment = document.createDocumentFragment();
+            for (let i = 0; i < n; i++) {
+                fragment.appendChild(buildRow());
+            }
+            tbody.appendChild(fragment);
+
+            renumberRows();
+            updateStats();
+            input.value = 1;
+        }
+
+        // Renumerar todas las filas de la tabla
+        function renumberRows() {
+            const rows = document.querySelectorAll('#table-body tr');
+            rows.forEach((tr, index) => {
+                const span = tr.querySelector('.row-num');
+                if (span) span.textContent = index + 1;
+            });
+        }
+
+        // Función para eliminar una fila
+        function deleteRow(btn) {
+            const tr = btn.closest('tr');
+            tr.remove();
+            renumberRows();
+            updateStats();
+        }
+
+        // Función para limpiar todo el formulario
+        function clearAll() {
+            if (confirm("¿Estás seguro de que deseas limpiar todo el formulario?")) {
+                document.getElementById('table-body').innerHTML = '';
+                addRow(); // Añadir una fila vacía por defecto
+                renumberRows();
+                updateStats();
+            }
+        }
+
+        // Límite para TARA: solo 4 dígitos numéricos
+        function limitTara(input) {
+            input.value = input.value.replace(/[^0-9]/g, '').substring(0, 4);
+            updateStats();
+        }
+
+        // Límite para PESO: solo 5 dígitos numéricos, máximo 45000
+        // (29/09/2026: antes 34000; se iguala a GENERAR ENTRADA, que admite hasta 45000)
+        function limitPeso(input) {
+            let val = input.value.replace(/[^0-9]/g, '');
+            if (val.length > 5) {
+                val = val.substring(0, 5);
+            }
+            if (val !== '' && parseInt(val) > 45000) {
+                val = '45000';
+            }
+            input.value = val;
+            updateStats();
+        }
+
+        // Manejar entrada de REF: formateo y aplicación de reglas de autocompletado
+        function handleRefInput(input) {
+            // 1. Formatear el input (4 letras seguidas de 7 números)
+            let val = input.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+            let formatted = '';
+            for (let i = 0; i < val.length; i++) {
+                if (i < 4) {
+                    if (/[A-Z]/.test(val[i])) formatted += val[i];
+                } else {
+                    if (/[0-9]/.test(val[i])) formatted += val[i];
+                }
+            }
+            input.value = formatted.substring(0, 11);
+
+            // 2. Aplicar reglas de TARA y PIES según el prefijo
+            const currentVal = input.value.toUpperCase();
+            const tr = input.closest('tr');
+            const taraInput = tr.querySelector('.tara');
+            const piesSelect = tr.querySelector('.pies');
+
+            // 29/09/2026: las siglas se gestionan en el EDITOR (datos/siglas_datos.js) y
+            // rellenan pies, tara, peso, destino y ONU/clase (solo los que tengan valor),
+            // una vez por sigla y fila. REF_RULES queda como respaldo si falta el archivo.
+            if (Array.isArray(window.UTI_SIGLAS_DATOS)) {
+                const sig = crBuscarSiglas(currentVal);
+                if (!sig) { tr.dataset.siglas = ''; }
+                else if (tr.dataset.siglas !== sig.siglas) {
+                    tr.dataset.siglas = sig.siglas;
+                    crAplicarSiglasFila(tr, sig);
+                }
+                updateStats();
+                return;
+            }
+
+            if (currentVal.length >= 4) {
+                let matched = false;
+                // Iterar de atrás hacia adelante para priorizar las reglas más específicas
+                for (let i = REF_RULES.length - 1; i >= 0; i--) {
+                    const rule = REF_RULES[i];
+                    for (const prefix of rule.prefixes) {
+                        if (currentVal.startsWith(prefix)) {
+                            taraInput.value = rule.tara;
+                            piesSelect.value = rule.pies;
+                            matched = true;
+                            break;
+                        }
+                    }
+                    if (matched) break;
+                }
+            }
+
+            updateStats();
+        }
+
+        // ===== 29/09/2026: siglas de contenedor (datos/siglas_datos.js) =====
+        // Las más largas que coincidan con el principio de la referencia (RICU30 antes que RICU)
+        function crBuscarSiglas(ref) {
+            const lista = window.UTI_SIGLAS_DATOS;
+            if (!Array.isArray(lista)) return null;
+            const r = String(ref || '').toUpperCase();
+            let mejor = null;
+            lista.forEach(s => {
+                const sg = String((s && s.siglas) || '').toUpperCase();
+                if (sg && r.startsWith(sg) && (!mejor || sg.length > mejor.siglas.length)) mejor = Object.assign({}, s, { siglas: sg });
+            });
+            return mejor;
+        }
+
+        // Rellena la fila con los parámetros asignados a las siglas
+        function crAplicarSiglasFila(tr, s) {
+            const hay = v => v !== undefined && v !== null && String(v) !== '';
+            const pon = (sel, v) => {
+                const el = tr.querySelector(sel);
+                if (!el || !hay(v)) return;
+                if (el.tagName === 'SELECT' && !Array.from(el.options).some(o => o.value === String(v))) return;
+                el.value = String(v);
+                el.classList.remove('campo-error');
+            };
+            pon('.pies', s.pies);
+            pon('.tara', s.tara);
+            pon('.peso', s.peso);
+            pon('.destino', s.destino);
+            if (hay(s.onu)) {
+                pon('.onu', s.onu);
+                pon('.clase', s.clase || ADR_DATABASE[String(s.onu)] || '');
+            }
+        }
+
+        // Validar formato de referencia estricto (4 letras y 7 números) al salir del campo
+        function validateRef(input) {
+            if (input.value && input.value.length < 11) {
+                alert("La referencia debe tener 4 letras seguidas de 7 números (ej. ELLU1005143).");
+                input.value = '';
+                updateStats();
+            } else {
+                input.value = input.value.toUpperCase();
+            }
+        }
+
+        // Actualizar la clase basada en el número ONU ingresado
+        function updateClass(input) {
+            // 29/09/2026: ONU = 4 dígitos numéricos
+            crFiltrarInput(input, v => crSoloDigitos(v, 4));
+            const onu = input.value.trim();
+            const tr = input.closest('tr');
+            const claseInput = tr.querySelector('.clase');
+
+            if (ADR_DATABASE[onu]) {
+                claseInput.value = ADR_DATABASE[onu];
+            } else {
+                claseInput.value = '';
+            }
+        }
+
+        // Calcular y mostrar estadísticas (Entrada, Salida, Cargados, Lona)
+        function updateStats() {
+            const rows = document.querySelectorAll('#table-body tr');
+            let total = 0, entrada = 0, salida = 0, cargados = 0, lona = 0;
+
+            rows.forEach(tr => {
+                const ref = tr.querySelector('.ref-input').value.trim();
+                const actuacion = tr.querySelector('.actuacion').value;
+                const peso = parseFloat(tr.querySelector('.peso').value) || 0;
+
+                if (ref || peso > 0) {
+                    total++;
+                    if (actuacion === 'ENTRADA') entrada++;
+                    if (actuacion === 'SALIDA') salida++;
+                    // En SALIDA el peso no se muestra: no cuenta como cargado
+                    if (actuacion === 'ENTRADA' && peso > 0) cargados++;
+
+                    const prefix = ref.substring(0, 4).toUpperCase();
+                    if (['TRFA', 'OMFE', 'MEDE', 'COMB'].includes(prefix)) {
+                        lona++;
+                    }
+                }
+            });
+
+            document.getElementById('total-count').innerText = `${total} TOTAL`;
+            document.getElementById('count-entrada').innerText = `${entrada} ENTRADA`;
+            document.getElementById('count-salida').innerText = `${salida} SALIDA`;
+            document.getElementById('count-cargados').innerText = `${cargados} CARGADOS`;
+            document.getElementById('count-lona').innerText = `${lona} LONA`;
+        }
+
+        // Obtener todos los datos de la tabla en formato JSON
+        function getTableData() {
+            const rows = document.querySelectorAll('#table-body tr');
+            const data = [];
+
+            rows.forEach(tr => {
+                const rowData = {
+                    'Nº': tr.querySelector('.row-num') ? tr.querySelector('.row-num').textContent : '',
+                    'ACTUACIÓN': tr.querySelector('.actuacion').value,
+                    'FECHA': tr.querySelector('.fecha').value,
+                    'HORA PREVISTA': tr.querySelector('.hora').value,
+                    'REF': tr.querySelector('.ref-input').value,
+                    'N_PIES': tr.querySelector('.pies').value,
+                    'TARA': tr.querySelector('.tara').value,
+                    'PESO': tr.querySelector('.peso').value,
+                    'ONU': tr.querySelector('.onu').value,
+                    'CLASE': tr.querySelector('.clase').value,
+                    'LOCALIZADOR': tr.querySelector('.localizador').value,
+                    'DESTINO': tr.querySelector('.destino').value,
+                    'REEXPEDICIÓN': tr.querySelector('.reexpedicion').value
+                };
+                // 29/09/2026: en SALIDA solo cuentan Fecha, Hora prevista y Ref.
+                if (rowData['ACTUACIÓN'] === 'SALIDA') {
+                    ['N_PIES', 'TARA', 'PESO', 'ONU', 'CLASE', 'LOCALIZADOR', 'DESTINO', 'REEXPEDICIÓN']
+                        .forEach(k => { rowData[k] = ''; });
+                }
+                if (rowData.REF || rowData.ONU || rowData.LOCALIZADOR) {
+                    data.push(rowData);
+                }
+            });
+            return data;
+        }
+
+        // === FUNCIONES DE IMPORTACIÓN ===
+
+        function triggerImport(type) {
+            if (type === 'csv') {
+                document.getElementById('csvInput').click();
+            } else {
+                document.getElementById('xlsxInput').click();
+            }
+        }
+
+        function handleFileImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    // 29/09/2026: raw:true → los CSV se leen como texto. Sin esto la librería
+                    // convertía FECHA en 46294, HORA en 0.45 y el ONU «0004» en 4.
+                    const workbook = XLSX.read(data, { type: 'array', raw: true });
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+
+                    const rows = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+
+                    if (rows.length === 0) {
+                        alert("El archivo está vacío o no tiene el formato correcto.");
+                        event.target.value = '';
+                        return;
+                    }
+
+                    if (document.querySelectorAll('#table-body tr').length > 0) {
+                        if (!confirm("Esto reemplazará los datos actuales de la tabla. ¿Continuar?")) {
+                            event.target.value = '';
+                            return;
+                        }
+                    }
+
+                    document.getElementById('table-body').innerHTML = '';
+
+                    const tbody = document.getElementById('table-body');
+                    const fragment = document.createDocumentFragment();
+
+                    rows.forEach(row => {
+                        fragment.appendChild(buildRowFromImport(row));
+                    });
+
+                    tbody.appendChild(fragment);
+
+                    renumberRows();
+                    updateStats();
+                    // 29/09/2026: los archivos exportados llevan la cabecera en cada fila
+                    crCabeceraDesdeImport(rows);
+                    crToast(`Importados ${rows.length} registro(s).`, 'success');
+                    event.target.value = '';
+
+                } catch (error) {
+                    console.error("Error al importar el archivo:", error);
+                    alert("Hubo un error al procesar el archivo. Asegúrate de que el formato sea válido.");
+                    event.target.value = '';
+                }
+            };
+
+            reader.readAsArrayBuffer(file);
+        }
+
+        function buildRowFromImport(data) {
+            const now = getCurrentDateTime();
+            // 29/09/2026: todo se normaliza a texto; FECHA y HORA admiten cualquier formato
+            // habitual (DD/MM/AAAA, AAAA-MM-DD, número de Excel…) y se pasan al del input.
+            const txt = v => String(v == null ? '' : v).trim();
+
+            const actuacion    = txt(data['ACTUACIÓN'] || data['ACTUACION'] || 'ENTRADA').toUpperCase();
+            const fecha        = crFechaISO(data['FECHA']) || now.date;
+            const hora         = crHoraHM(data['HORA PREVISTA'] || data['HORA']) || now.time;
+            const ref          = txt(data['REF'] || data['REFERENCIA']).toUpperCase().replace(/[^A-Z0-9]/g, '').substring(0, 11);
+            const pies         = txt(data['N_PIES'] || data['Nº PIES'] || data['PIES']);
+            const tara         = txt(data['TARA']);
+            const peso         = txt(data['PESO']);
+            // Excel guarda el ONU como número y pierde los ceros (0004 → 4): se reponen
+            const onuRaw       = txt(data['ONU']);
+            const onu          = /^\d{1,3}$/.test(onuRaw) ? onuRaw.padStart(4, '0') : onuRaw;
+            const clase        = txt(data['CLASE']);
+            const localizador  = txt(data['LOCALIZADOR']);
+            const destino      = txt(data['DESTINO']).toUpperCase();
+            const reexpedicion = txt(data['REEXPEDICIÓN'] || data['REEXPEDICION']).toUpperCase();
+
+            return buildRow({
+                actuacion:    actuacion === 'SALIDA' ? 'SALIDA' : 'ENTRADA',
+                fecha:        fecha,
+                hora:         hora,
+                ref:          ref,
+                pies:         pies,
+                tara:         tara,
+                peso:         peso,
+                onu:          onu,
+                clase:        clase,
+                localizador:  localizador,
+                destino:      destino,
+                reexpedicion: reexpedicion
+            });
+        }
+
+        // === FIN FUNCIONES DE IMPORTACIÓN ===
+
+        // ===== 29/09/2026: exportaci\u00F3n e importaci\u00F3n compatibles entre s\u00ED =====
+
+        // Cualquier fecha habitual -> YYYY-MM-DD (lo que admite <input type="date">)
+        // Acepta AAAA-MM-DD, DD/MM/AAAA (tambi\u00E9n con - o .), a\u00F1o de 2 cifras, Date y
+        // n\u00FAmero de serie de Excel. Devuelve '' si no la reconoce.
+        function crFechaISO(v) {
+            if (v == null || v === '') return '';
+            const p2 = n => String(n).padStart(2, '0');
+            if (v instanceof Date && !isNaN(v)) return `${v.getFullYear()}-${p2(v.getMonth() + 1)}-${p2(v.getDate())}`;
+            if (typeof v === 'number' && v > 0) {
+                const d = new Date(Math.round((v - 25569) * 86400000));
+                return `${d.getUTCFullYear()}-${p2(d.getUTCMonth() + 1)}-${p2(d.getUTCDate())}`;
+            }
+            const s = String(v).trim();
+            let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+            if (m) return `${m[1]}-${p2(m[2])}-${p2(m[3])}`;
+            m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2}|\d{4})$/);
+            if (m) {
+                const anio = m[3].length === 2 ? '20' + m[3] : m[3];
+                const dia = +m[1], mes = +m[2];
+                if (mes >= 1 && mes <= 12 && dia >= 1 && dia <= 31) return `${anio}-${p2(mes)}-${p2(dia)}`;
+            }
+            if (/^\d+(\.\d+)?$/.test(s) && +s > 20000) return crFechaISO(+s);   // serie de Excel en texto
+            return '';
+        }
+
+        // Cualquier hora habitual -> HH:MM. Acepta HH:MM, HH:MM:SS, Date y fracci\u00F3n de d\u00EDa de Excel.
+        function crHoraHM(v) {
+            if (v == null || v === '') return '';
+            const p2 = n => String(n).padStart(2, '0');
+            if (v instanceof Date && !isNaN(v)) return `${p2(v.getHours())}:${p2(v.getMinutes())}`;
+            let s = String(v).trim();
+            if (/^\d*\.\d+$|^0$/.test(s)) s = +s;
+            if (typeof s === 'number') {
+                if (s < 0 || s >= 1) return '';
+                const min = Math.round(s * 1440) % 1440;
+                return `${p2(Math.floor(min / 60))}:${p2(min % 60)}`;
+            }
+            const m = s.match(/^(\d{1,2}):(\d{2})/);
+            if (m && +m[1] < 24 && +m[2] < 60) return `${p2(m[1])}:${m[2]}`;
+            return '';
+        }
+
+        // Nombre de archivo: EMPRESA_DD-MM-AAAA_HH-MM-SS.<ext>
+        function crNombreArchivo(ext) {
+            const empresa = crAlfanum(document.getElementById('empresa').value, CR_LIMITES.empresa.max, true)
+                .trim().replace(/\s+/g, '_') || 'SIN_EMPRESA';
+            const n = new Date();
+            const p2 = x => String(x).padStart(2, '0');
+            return `${empresa}_${p2(n.getDate())}-${p2(n.getMonth() + 1)}-${n.getFullYear()}_${p2(n.getHours())}-${p2(n.getMinutes())}-${p2(n.getSeconds())}.${ext}`;
+        }
+
+        // Filas a exportar: la cabecera (empresa, matr\u00EDcula, conductor, fecha de actuaci\u00F3n)
+        // viaja en cada fila para que el archivo se pueda volver a importar completo.
+        // Fechas en DD/MM/AAAA (Regla 4).
+        function crDatosExport() {
+            const cab = crCabecera();
+            return getTableData().map(r => Object.assign({
+                'TERMINAL / ESTACIÓN': crTerminalNombre(cab.terminal),   // 04/10/2026
+                'ID TERMINAL': cab.terminal,   // id de UTI-STOCK: ADJUNTAR LISTA lo compara con su terminal
+                'EMPRESA': cab.empresa,
+                'MATR\u00CDCULA': cab.matricula,
+                'CONDUCTOR': cab.conductor,
+                'FECHA ACTUACI\u00D3N': crFechaDMY(cab.fecha)
+            }, r, { 'FECHA': crFechaDMY(r['FECHA']) }));
+        }
+
+        // Al importar, la cabecera se toma de la primera fila que la traiga
+        function crCabeceraDesdeImport(rows) {
+            const f = rows.find(r => r && (r['EMPRESA'] || r['MATR\u00CDCULA'] || r['MATRICULA'] || r['CONDUCTOR']));
+            if (!f) return;
+            const poner = (id, v) => {
+                if (v == null || String(v).trim() === '') return;
+                const lim = CR_LIMITES[id];
+                document.getElementById(id).value = crAlfanum(v, lim.max, lim.espacios);
+            };
+            poner('empresa', f['EMPRESA']);
+            poner('matricula', f['MATR\u00CDCULA'] || f['MATRICULA']);
+            poner('conductor', f['CONDUCTOR']);
+            const fa = crFechaISO(f['FECHA ACTUACI\u00D3N'] || f['FECHA ACTUACION']);
+            if (fa) document.getElementById('fecha-actuacion').value = fa;
+            // 04/10/2026: la terminal del archivo solo se aplica si no la ha fijado la web principal
+            const selTer = document.getElementById('terminal');
+            const ter = String(f['ID TERMINAL'] || f['TERMINAL / ESTACI\u00D3N'] || f['TERMINAL / ESTACION'] || f['TERMINAL'] || '').trim().toUpperCase();
+            if (ter && !selTer.disabled) {
+                const t = crTerminales().find(x => x.activa !== false && (x.id.toUpperCase() === ter || x.nombre.toUpperCase() === ter));
+                if (t) selTer.value = t.id;
+            }
+        }
+
+        // Exportar a CSV (separador \u00AB;\u00BB, BOM UTF-8 y comillas dobles escapadas como "")
+        function exportCSV() {
+            const data = crDatosExport();
+            if (data.length === 0) { crToast('No hay datos para exportar.', 'error'); return; }
+
+            const headers = Object.keys(data[0]);
+            const csvRows = [];
+            const celda = v => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`;
+
+            csvRows.push(headers.map(celda).join(';'));
+            for (const row of data) {
+                csvRows.push(headers.map(h => celda(row[h])).join(';'));
+            }
+
+            const csvString = csvRows.join('\r\n');
+            const blob = new Blob(["\uFEFF" + csvString], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", crNombreArchivo('csv'));
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            crToast(`CSV exportado (${data.length} registro(s)).`, 'success');
+        }
+
+        // Exportar a XLSX (todas las celdas como texto: as\u00ED no se pierden ceros ni fechas)
+        function exportXLSX() {
+            const data = crDatosExport();
+            if (data.length === 0) { crToast('No hay datos para exportar.', 'error'); return; }
+
+            const ws = XLSX.utils.json_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Reservas");
+
+            XLSX.writeFile(wb, crNombreArchivo('xlsx'));
+            crToast(`XLSX exportado (${data.length} registro(s)).`, 'success');
+        }
+
+        // EXPORT. TECO: exporta la lista a CSV con un solo clic (mismo formato importable)
+        function exportTECO() {
+            exportCSV();
+        }
+
+        // Men\u00FA de formato de los iconos \uD83D\uDCC1 (exportar) y \u2B07\uFE0F (importar)
+        function crMenuFormato(btn, accion) {
+            let menu = document.getElementById('cr-fmt-menu');
+            if (!menu) {
+                menu = document.createElement('div');
+                menu.id = 'cr-fmt-menu';
+                document.body.appendChild(menu);
+                document.addEventListener('mousedown', e => {
+                    if (menu.style.display === 'block' && !menu.contains(e.target) && !e.target.closest('.icon-btn')) menu.style.display = 'none';
+                });
+                document.addEventListener('keydown', e => { if (e.key === 'Escape') menu.style.display = 'none'; });
+                window.addEventListener('resize', () => { menu.style.display = 'none'; });
+            }
+            // Pulsar el mismo icono con el men\u00FA abierto lo cierra
+            if (menu.style.display === 'block' && menu.dataset.accion === accion) {
+                menu.style.display = 'none';
+                return;
+            }
+            const exportar = accion === 'exportar';
+            menu.dataset.accion = accion;
+            menu.innerHTML = `
+                <div class="cr-fmt-tit">${exportar ? '\uD83D\uDCC1 Exportar listado' : '\u2B07\uFE0F Importar listado'}</div>
+                <button type="button" data-fmt="csv"><span class="cr-fmt-tag tag-csv">CSV</span>${exportar ? 'Exportar CSV' : 'Importar CSV'}</button>
+                <button type="button" data-fmt="xlsx"><span class="cr-fmt-tag tag-xlsx">XLSX</span>${exportar ? 'Exportar XLSX' : 'Importar XLSX'}</button>`;
+            menu.querySelectorAll('button').forEach(b => {
+                b.onclick = () => {
+                    menu.style.display = 'none';
+                    const fmt = b.dataset.fmt;
+                    if (exportar) { fmt === 'csv' ? exportCSV() : exportXLSX(); }
+                    else { triggerImport(fmt); }
+                };
+            });
+            // Se coloca bajo el icono, sin salirse por la derecha
+            menu.style.display = 'block';
+            const r = btn.getBoundingClientRect();
+            const ancho = menu.offsetWidth;
+            menu.style.top = `${r.bottom + 6}px`;
+            menu.style.left = `${Math.max(8, Math.min(r.right - ancho, window.innerWidth - ancho - 8))}px`;
+        }
+
+        // Imprimir la tabla (rellenando antes la cabecera del reporte)
+        function printTable() {
+            document.getElementById('ph-terminal').textContent =   // 04/10/2026
+                crTerminalNombre(document.getElementById('terminal').value) || '—';
+            document.getElementById('ph-empresa').textContent =
+                document.getElementById('empresa').value.trim() || '—';
+            document.getElementById('ph-matricula').textContent =
+                document.getElementById('matricula').value.trim() || '—';
+            document.getElementById('ph-conductor').textContent =
+                document.getElementById('conductor').value.trim() || '—';
+            document.getElementById('ph-fecha').textContent =
+                formatDateDisplay(document.getElementById('fecha-actuacion').value);
+
+            const visibles = getTableData().length;
+            document.getElementById('ph-total').textContent = visibles;
+
+            window.print();
+        }
+
+        // === FUNCIONES DE GENERACIÓN DE QR ===
+
+        // Función auxiliar para extraer TODOS los datos de una fila
+        function getQRDataFromRow(tr) {
+            const num = tr.querySelector('.row-num') ? tr.querySelector('.row-num').textContent : '';
+            const actuacion = tr.querySelector('.actuacion').value;
+            const fecha = tr.querySelector('.fecha').value;
+            const hora = tr.querySelector('.hora').value;
+            const ref = tr.querySelector('.ref-input').value;
+            const pies = tr.querySelector('.pies').value;
+            const tara = tr.querySelector('.tara').value;
+            const peso = tr.querySelector('.peso').value;
+            const onu = tr.querySelector('.onu').value;
+            const clase = tr.querySelector('.clase').value;
+            const localizador = tr.querySelector('.localizador').value;
+            const destino = tr.querySelector('.destino').value;
+            const reexpedicion = tr.querySelector('.reexpedicion').value;
+
+            return `Nº: ${num}\nACTUACIÓN: ${actuacion}\nFECHA: ${fecha}\nHORA PREVISTA: ${hora}\nREF: ${ref}\nNº PIES: ${pies}\nTARA: ${tara}\nPESO: ${peso}\nONU: ${onu}\nCLASE: ${clase}\nLOCALIZADOR: ${localizador}\nDESTINO: ${destino}\nREEXPEDICIÓN: ${reexpedicion}`;
+        }
+
+        // ===== 29/09/2026: QR compatible con GENERAR ENTRADA / GENERAR SALIDA =====
+        // El QR lleva el mismo JSON que generarQREntrada()/generarQRSalida() de index.html,
+        // que es lo que entiende el MOSTRADOR - SCANNER. getQRDataFromRow() (texto plano)
+        // se conserva, pero ya no se usa para el QR: el escáner no sabe leer ese formato.
+
+        // Toast en la esquina superior derecha (Regla 10)
+        function crToast(msg, tipo = 'info') {
+            let box = document.getElementById('cr-toasts');
+            if (!box) {
+                box = document.createElement('div');
+                box.id = 'cr-toasts';
+                document.body.appendChild(box);
+            }
+            const t = document.createElement('div');
+            t.className = `cr-toast ${tipo}`;
+            const icono = tipo === 'error' ? '⚠️' : (tipo === 'success' ? '✅' : 'ℹ️');
+            t.innerHTML = `<span>${icono}</span><span>${crEsc(msg)}</span><button type="button" class="cr-toast-x" title="Cerrar">×</button>`;
+            const cerrar = () => {
+                t.classList.add('saliendo');
+                setTimeout(() => t.remove(), 300);
+            };
+            t.querySelector('.cr-toast-x').onclick = cerrar;
+            box.appendChild(t);
+            setTimeout(cerrar, 4000);
+        }
+
+        // Muestra u oculta las columnas de ENTRADA según la actuación de la fila
+        function onActuacionChange(sel) {
+            const tr = sel.closest('tr');
+            const esSalida = sel.value === 'SALIDA';
+            tr.classList.toggle('fila-salida', esSalida);
+            if (esSalida) {
+                tr.querySelectorAll('.solo-entrada .campo-error').forEach(el => el.classList.remove('campo-error'));
+            }
+            updateStats();
+        }
+
+        // ===== TERMINAL / ESTACIÓN (04/10/2026) =====
+        // Todas las reservas de la lista son para una terminal o estación. Dentro de la web
+        // principal la fija ella (la elegida al acceder) y el selector queda bloqueado; abierto
+        // suelto, se elige aquí. Viaja en el QR («terminal», con el id) y en los reportes.
+        function crTerminales() {
+            const lista = Array.isArray(window.UTI_TERMINALES_DATOS) ? window.UTI_TERMINALES_DATOS : [];
+            return lista.filter(t => t && t.id && t.nombre);
+        }
+        function crTerminalNombre(id) {
+            const t = crTerminales().find(x => x.id === id);
+            return t ? t.nombre : (id || '');
+        }
+        function crTerminalOpciones() {
+            const sel = document.getElementById('terminal');
+            const actual = sel.value;
+            const activas = crTerminales().filter(t => t.activa !== false);
+            let html = '<option value="">— Seleccione —</option>';
+            [['terminal', 'TERMINALES'], ['estacion', 'ESTACIONES']].forEach(([tipo, rotulo]) => {
+                const g = activas.filter(t => (t.tipo === 'estacion' ? 'estacion' : 'terminal') === tipo);
+                if (g.length) html += `<optgroup label="${crEsc(rotulo)}">${g.map(t => `<option value="${crEsc(t.id)}">${crEsc(t.nombre)}</option>`).join('')}</optgroup>`;
+            });
+            sel.innerHTML = html;
+            if (actual && activas.some(t => t.id === actual)) sel.value = actual;
+            else if (activas.length === 1) sel.value = activas[0].id;
+        }
+        // La web principal manda la terminal de la sesión: se fija y se bloquea
+        function crFijarTerminal(t) {
+            if (!t || !t.id) return;
+            const sel = document.getElementById('terminal');
+            if (!sel.querySelector(`option[value="${CSS.escape(t.id)}"]`)) {
+                const o = document.createElement('option');
+                o.value = t.id;
+                o.textContent = t.nombre || t.id;
+                sel.appendChild(o);
+            }
+            sel.value = t.id;
+            sel.disabled = true;
+            sel.title = 'Fijada al acceder a la web: todas las reservas de esta sesión son para ella';
+            sel.classList.remove('campo-error');
+        }
+        window.addEventListener('message', function(e) {
+            const msg = e.data;
+            if (!msg || typeof msg !== 'object' || msg.type !== 'reservas:terminal') return;
+            crFijarTerminal(msg.data);
+        });
+
+        // Datos de la cabecera en MAYÚSCULAS
+        function crCabecera() {
+            const v = id => (document.getElementById(id).value || '').trim().toUpperCase();
+            return {
+                terminal: (document.getElementById('terminal').value || '').trim(),   // id: no se pasa a mayúsculas
+                empresa: v('empresa'),
+                matricula: v('matricula'),
+                conductor: v('conductor'),
+                fecha: (document.getElementById('fecha-actuacion').value || '').trim()
+            };
+        }
+
+        // Comprueba los obligatorios de la cabecera y marca en rojo los que faltan
+        function crValidarCabecera() {
+            const faltan = [];
+            [['terminal', 'Terminal / Estación'], ['empresa', 'Empresa'], ['matricula', 'Matrícula del vehículo'],
+             ['conductor', 'Nombre conductor'], ['fecha-actuacion', 'Fecha de actuación']].forEach(([id, nombre]) => {
+                const el = document.getElementById(id);
+                const ok = !!(el.value || '').trim();
+                el.classList.toggle('campo-error', !ok);
+                if (!ok) faltan.push(nombre);
+            });
+            return faltan;
+        }
+
+        // Comprueba los obligatorios de una fila según su actuación.
+        // ENTRADA: Ref., Nº Pies, Tara y Destino (+ Clase si hay ONU; Peso opcional). SALIDA: Ref.
+        function crValidarFila(tr) {
+            const faltan = [];
+            const val = s => (tr.querySelector(s).value || '').trim();
+            const marca = (sel, nombre, ok) => {
+                tr.querySelector(sel).classList.toggle('campo-error', !ok);
+                if (!ok) faltan.push(nombre);
+            };
+            marca('.ref-input', 'Ref. (4 letras + 7 números)', /^[A-Z]{4}[0-9]{7}$/.test(val('.ref-input').toUpperCase()));
+
+            if (tr.querySelector('.actuacion').value === 'SALIDA') {
+                tr.querySelectorAll('.solo-entrada .campo-error').forEach(el => el.classList.remove('campo-error'));
+                return faltan;
+            }
+            marca('.pies', 'Nº Pies', !!val('.pies'));
+            const tara = val('.tara');
+            marca('.tara', 'Tara (0-9999)', tara !== '' && +tara >= 0 && +tara <= 9999);
+            // Peso NO es obligatorio (29/09/2026): en blanco = 0 = VACÍO, como GENERAR ENTRADA
+            // sin «cargado». Si se escribe, debe estar en rango.
+            const peso = val('.peso');
+            marca('.peso', 'Peso (0-45000)', peso === '' || (+peso >= 0 && +peso <= 45000));
+            marca('.destino', 'Destino', DESTINOS.includes(val('.destino')));
+            marca('.onu', 'ONU sin clase reconocida', !val('.onu') || !!val('.clase'));
+            return faltan;
+        }
+
+        // ¿La fila tiene algo escrito? (las filas vacías se ignoran en GENERAR QR (TODOS))
+        function crFilaConDatos(tr) {
+            const val = s => (tr.querySelector(s).value || '').trim();
+            if (val('.ref-input')) return true;
+            if (tr.querySelector('.actuacion').value === 'SALIDA') return false;
+            return ['.pies', '.tara', '.peso', '.onu', '.localizador', '.destino'].some(s => !!val(s));
+        }
+
+        // YYYY-MM-DD -> DD/MM/AAAA (Regla 4)
+        function crFechaDMY(iso) {
+            if (!iso) return '';
+            const p = iso.split('-');
+            return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : iso;
+        }
+
+        // Construye el objeto del QR con las mismas claves que GENERAR ENTRADA / SALIDA.
+        // En SALIDA no se envía «cargado»: aquí no se conoce el estado y el escáner lo
+        // compararía contra la reserva (contrato del QR, regla de oro 2).
+        function crDatosQR(tr) {
+            const cab = crCabecera();
+            const val = s => (tr.querySelector(s).value || '').trim();
+            const base = {
+                terminal: cab.terminal,   // 04/10/2026: id de la terminal/estación
+                cliente: cab.empresa,
+                conductor: cab.conductor,
+                matricula: cab.matricula,
+                contenedor: val('.ref-input').toUpperCase()
+            };
+            let d;
+            if (val('.actuacion') === 'SALIDA') {
+                d = Object.assign({ tipo: 'REGISTRO SALIDA' }, base);
+            } else {
+                const peso = val('.peso');
+                const cargado = (parseInt(peso, 10) || 0) > 0;
+                const onu = val('.onu').toUpperCase();
+                const clase = val('.clase').toUpperCase();
+                const hasAdr = !!onu;
+                d = Object.assign({ tipo: 'REGISTRO ENTRADA' }, base, {
+                    localizador: val('.localizador').toUpperCase() || null,
+                    pies: val('.pies'),
+                    destino: val('.destino'),
+                    tara: val('.tara'),
+                    peso: cargado ? peso : '0',
+                    cargado: cargado,
+                    adr: { activo: hasAdr, onu: hasAdr ? onu : '', clase: hasAdr ? clase : '' }
+                });
+            }
+            const fecha = crFechaDMY(val('.fecha'));
+            const hora = val('.hora');
+            if (fecha) d.fecha = fecha;
+            if (hora) d.hora = hora;
+            d.timestamp = new Date().toISOString();
+            return d;
+        }
+
+        // Imagen del QR (mismo método que generarReporte() de index.html: nivel L, UTF-8)
+        function crQrImgTag(data, cell) {
+            const qr = qrcode(0, 'L');
+            qr.addData(unescape(encodeURIComponent(JSON.stringify(data))));
+            qr.make();
+            return qr.createImgTag(cell || 5, 0);
+        }
+
+        // Reportes en ventana aparte, uno por página (se usa en TODOS y si el creador
+        // se abre suelto, fuera de la web principal)
+        function crAbrirReportes(lista) {
+            const p = n => String(n).padStart(2, '0');
+            const now = new Date();
+            const sello = `${p(now.getDate())}-${p(now.getMonth() + 1)}-${now.getFullYear()}_${p(now.getHours())}-${p(now.getMinutes())}-${p(now.getSeconds())}`;
+            const titulo = lista.length === 1
+                ? `UTI_${lista[0].tipo === 'REGISTRO SALIDA' ? 'SALIDA' : 'ENTRADA'}_${lista[0].contenedor}-${sello}`
+                : `UTI_RESERVAS_${lista.length}-${sello}`;
+            const fila = (label, value, cls = '') =>
+                `<div class="data-row ${cls}"><span class="data-label">${crEsc(label)}</span><span class="data-value">${crEsc(value)}</span></div>`;
+
+            const paginas = lista.map((d, i) => {
+                const salida = d.tipo === 'REGISTRO SALIDA';
+                let filas = fila('Terminal / Estación', crTerminalNombre(d.terminal), 'full') +   // 04/10/2026
+                            fila('Cliente', d.cliente) + fila('Nombre conductor', d.conductor) +
+                            fila('Matrícula vehículo', d.matricula) + fila('Contenedor', d.contenedor);
+                if (d.fecha || d.hora) filas += fila('Fecha / hora prevista', `${d.fecha || '—'} ${d.hora || ''}`.trim(), 'full');
+                if (!salida) {
+                    if (d.localizador) filas += fila('Nº Localizador', d.localizador, 'info');
+                    filas += fila('Tamaño', `${d.pies} PIES`) + fila('Estado', d.cargado ? 'CARGADO' : 'VACÍO') +
+                             fila('Destino', d.destino, 'full') + fila('Tara (KG)', d.tara) + fila('Peso Carga', d.peso);
+                    if (d.adr && d.adr.activo) {
+                        filas += fila('MERCANCÍA PELIGROSA', 'ADR ACTIVO', 'danger full') +
+                                 fila('ONU', d.adr.onu, 'danger') + fila('Clase', d.adr.clase, 'danger');
+                    }
+                }
+                return `<section class="rep${i < lista.length - 1 ? ' salto' : ''}">
+                    <div class="report-header"><h2 class="${salida ? 'salida' : 'entrada'}">${salida ? 'REGISTRO SALIDA' : 'REGISTRO ENTRADA'}</h2>
+                    <div class="ts">Generado: ${now.toLocaleDateString()} - ${now.toLocaleTimeString()}</div></div>
+                    <div class="qr-wrapper">${crQrImgTag(d, 6)}</div>
+                    <div class="data-grid">${filas}</div></section>`;
+            }).join('');
+
+            const css = `body{font-family:'Segoe UI',Tahoma,sans-serif;margin:0;padding:20px;background:#f1f5f9;color:#0f172a}
+                .barra{text-align:center;margin-bottom:16px}.barra button{background:#10b981;color:#fff;border:none;border-radius:6px;padding:10px 22px;font-weight:700;cursor:pointer}
+                .rep{background:#fff;max-width:560px;margin:0 auto 24px;padding:24px;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+                .report-header{text-align:center;margin-bottom:16px;border-bottom:1px dashed #ddd;padding-bottom:10px}
+                .report-header h2{font-size:18px;margin:0}.report-header h2.entrada{color:#10b981}.report-header h2.salida{color:#ef4444}
+                .ts{font-size:11px;color:#999;margin-top:5px}.qr-wrapper{display:flex;justify-content:center;margin:16px 0}.qr-wrapper img{width:160px;height:auto}
+                .data-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+                .data-row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px;background:#f8fafc;border-radius:8px;border-left:4px solid #0066ff}
+                .data-row.full{grid-column:1/-1}.data-row.danger{border-left-color:#ef4444;background:#fef2f2}.data-row.info{border-left-color:#3b82f6;background:#eff6ff}
+                .data-label{font-size:11px;color:#64748b;font-weight:700;text-transform:uppercase}.data-value{font-size:14px;font-weight:600;text-align:right}
+                @media print{body{background:#fff;padding:0}.barra{display:none}.rep{box-shadow:none;margin:0 auto}.rep.salto{page-break-after:always}
+                .data-row{border:1px solid #ddd;border-left-width:5px;background:#fff!important;page-break-inside:avoid}}`;
+
+            const w = window.open('', '_blank');
+            if (!w) {
+                crToast('El navegador ha bloqueado la ventana de reportes. Permita las ventanas emergentes.', 'error');
+                return;
+            }
+            w.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>${crEsc(titulo)}</title><style>${css}</style></head>
+                <body oncontextmenu="return false"><div class="barra"><button onclick="window.print()">🖨️ IMPRIMIR ${lista.length > 1 ? 'TODOS (' + lista.length + ')' : ''}</button></div>${paginas}</body></html>`);
+            w.document.close();
+        }
+
+        // Generar QR para una sola fila: valida y abre el reporte de la web principal
+        // (el mismo de GENERAR ENTRADA / GENERAR SALIDA, con sus botones)
+        function generateSingleQR(btn) {
+            const tr = btn.closest('tr');
+            const num = tr.querySelector('.row-num') ? tr.querySelector('.row-num').textContent : '';
+            const errores = crValidarCabecera().concat(crValidarFila(tr));
+            if (errores.length) {
+                crToast(`Registro ${num}: faltan o no son válidos: ${errores.join(', ')}`, 'error');
+                return;
+            }
+            const data = crDatosQR(tr);
+            if (window.parent && window.parent !== window) {
+                // file:// bloquea el acceso directo entre marcos → postMessage
+                window.parent.postMessage({ type: 'reservas:genqrfila', data: data }, '*');
+                return;
+            }
+            crAbrirReportes([data]);
+        }
+
+        // Generar QR para todos los registros: un reporte por página en ventana aparte
+        function generateAllQR() {
+            const rows = Array.from(document.querySelectorAll('#table-body tr')).filter(crFilaConDatos);
+            if (rows.length === 0) {
+                crToast('No hay registros con datos para generar QR.', 'error');
+                return;
+            }
+            const errCab = crValidarCabecera();
+            const errFilas = [];
+            rows.forEach(tr => {
+                const e = crValidarFila(tr);
+                if (e.length) errFilas.push(`Nº ${tr.querySelector('.row-num').textContent}: ${e.join(', ')}`);
+            });
+            if (errCab.length || errFilas.length) {
+                const partes = [];
+                if (errCab.length) partes.push(`Cabecera: ${errCab.join(', ')}`);
+                partes.push(...errFilas.slice(0, 4));
+                if (errFilas.length > 4) partes.push(`y ${errFilas.length - 4} registro(s) más`);
+                crToast(`Revise los campos marcados en rojo. ${partes.join(' · ')}`, 'error');
+                return;
+            }
+            crAbrirReportes(rows.map(crDatosQR));
+        }
+
+        // ===== ONU / clase: catálogo ADR completo =====
+        // 29/09/2026: la fuente es datos/adr_datos.js, dentro de WEB_cliente, así que el
+        // creador ya no depende de index.html. Si llegara además el catálogo por mensaje
+        // de la web principal (reservas:adrdata), se carga igual.
+        function crCargarADR(lista) {
+            if (!Array.isArray(lista) || !lista.length) return;
+            const dl = document.getElementById('onu-list') || document.body.appendChild(Object.assign(document.createElement('datalist'), { id: 'onu-list' }));
+            let opciones = '';
+            lista.forEach(item => {
+                if (!item || !item.onu) return;
+                ADR_DATABASE[String(item.onu)] = String(item.clase || '');
+                opciones += `<option value="${crEsc(item.onu)}">${crEsc(item.clase)} · ${crEsc(item.descripcion || '')}</option>`;
+            });
+            dl.innerHTML = opciones;
+        }
+        window.addEventListener('message', function(e) {
+            const msg = e.data;
+            if (!msg || typeof msg !== 'object' || msg.type !== 'reservas:adrdata' || !Array.isArray(msg.data)) return;
+            crCargarADR(msg.data);
+        });
+
+        // Cerrar el modal de QR
+        function closeModal() {
+            document.getElementById('qrModal').style.display = 'none';
+        }
+
+        // Inicializar la tabla con una fila en blanco al cargar
+        window.onload = () => {
+            // Fecha de actuación = hoy
+            document.getElementById('fecha-actuacion').value = getLocalDateISO();
+
+            // 04/10/2026: terminales/estaciones; dentro de la web principal se pide la de la sesión
+            crTerminalOpciones();
+            if (window.parent && window.parent !== window) {
+                try { window.parent.postMessage({ type: 'reservas:pideterminal' }, '*'); } catch (e) {}
+            } else if (!crTerminales().length) {
+                crToast('Falta datos/terminales_datos.js: no se puede asignar la terminal o estación.', 'error');
+            }
+
+            addRow();
+
+            // 29/09/2026: Empresa (32), matrícula (7) y conductor (24): alfanuméricos y en
+            // MAYÚSCULAS (Regla 9). Cubre también lo pegado.
+            Object.keys(CR_LIMITES).forEach(id => {
+                const lim = CR_LIMITES[id];
+                document.getElementById(id).addEventListener('input', function() {
+                    crFiltrarInput(this, v => crAlfanum(v, lim.max, lim.espacios));
+                });
+            });
+
+            // La fecha de actuación se copia a las filas que aún tenían la anterior
+            // (las que se cambiaron a mano se respetan)
+            const fAct = document.getElementById('fecha-actuacion');
+            let fechaPrevia = fAct.value;
+            fAct.addEventListener('change', () => {
+                document.querySelectorAll('#table-body .fecha').forEach(inp => {
+                    if (!inp.value || inp.value === fechaPrevia) inp.value = fAct.value;
+                });
+                fechaPrevia = fAct.value;
+            });
+
+            // Al corregir un campo marcado en rojo, se quita la marca
+            document.addEventListener('input', e => {
+                if (e.target.classList && e.target.classList.contains('campo-error')) e.target.classList.remove('campo-error');
+            }, true);
+            document.addEventListener('change', e => {
+                if (e.target.classList && e.target.classList.contains('campo-error')) e.target.classList.remove('campo-error');
+            }, true);
+
+            // Catálogo ADR completo desde datos/adr_datos.js (dentro de WEB_cliente)
+            crCargarADR(window.UTI_ADR_DATOS);
+
+            // Solo si ese archivo faltara, se pide a la web principal
+            if (!Array.isArray(window.UTI_ADR_DATOS) && window.parent && window.parent !== window) {
+                try { window.parent.postMessage({ type: 'reservas:pideadr' }, '*'); } catch (e) {}
+            }
+        };
+    </script>
+    <!-- UTI-SECURITY-CONTEXTMENU -->
+    <script>
+    (function() {
+        // Bloqueo absoluto del botón derecho - se ejecuta en fase de captura
+        // para predominar sobre cualquier otro manejador de la página.
+        // (Regla 6 · añadido el 29/09/2026: esta web no lo tenía)
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            return false;
+        }, true);
+        // Bloqueo adicional en fase de burbuja por compatibilidad
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            return false;
+        });
+    })();
+    </script>
+    <!-- /UTI-SECURITY-CONTEXTMENU -->
+</body>
+</html>

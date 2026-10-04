@@ -1,0 +1,1330 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EDITOR · Web de cliente</title>
+    <!--
+        EDITOR DE LA WEB DE CLIENTE (29/09/2026)
+        Gestiona los datos de WEB_cliente/datos/: destinos, ADR (ONU y clase), siglas de
+        contenedor y contraseñas de acceso con sus permisos. La web de cliente trabaja sin
+        servidor: los cambios se guardan escribiendo esos archivos .js (botón GUARDAR).
+    -->
+    <script src="../datos/destinos_datos.js"></script>
+    <script src="../datos/adr_datos.js"></script>
+    <script src="../datos/siglas_datos.js"></script>
+    <script src="../datos/accesos_datos.js"></script>
+    <!-- 04/10/2026: terminales y estaciones (toda reserva se hace para una de ellas) -->
+    <script src="../datos/terminales_datos.js"></script>
+    <style>
+        :root {
+            --navy: #1C355E;
+            --navy-2: #2a4a80;
+            --red: #C00000;
+            --pink: #FCE8E8;
+            --bg: #f4f6f9;
+            --card: #ffffff;
+            --text: #1f2937;
+            --muted: #6b7280;
+            --border: #d1d5db;
+            --ok: #27AE60;
+            --warn: #E67E22;
+            --row: #FCE8E8;
+            --row-alt: #fff5f5;
+        }
+        [data-theme="dark"] {
+            --navy: #93b4e8;
+            --navy-2: #b9cff2;
+            --bg: #0f1724;
+            --card: #17223a;
+            --text: #e5e7eb;
+            --muted: #9ca3af;
+            --border: #334155;
+            --pink: #2a2033;
+            --row: #1d2940;
+            --row-alt: #1a2438;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 13px; background: var(--bg); color: var(--text);
+        }
+        button { font-family: inherit; }
+
+        /* ===== Acceso ===== */
+        #ed-login {
+            position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+            background: linear-gradient(135deg, #0f172a 0%, #1C355E 100%); z-index: 3000; padding: 16px;
+        }
+        .login-card {
+            background: #fff; color: #1f2937; border-radius: 12px; padding: 28px 26px; width: 100%; max-width: 360px;
+            box-shadow: 0 20px 50px rgba(0,0,0,.35); text-align: center;
+        }
+        .login-card h1 { margin: 0 0 4px; font-size: 20px; color: #1C355E; letter-spacing: 1px; }
+        .login-card p { margin: 0 0 18px; color: #6b7280; font-size: 12px; }
+        .login-card input {
+            width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; margin-bottom: 10px;
+        }
+        .login-card .ed-err { color: #C00000; font-weight: 600; min-height: 18px; font-size: 12px; }
+
+        /* ===== Cabecera ===== */
+        .ed-top {
+            position: sticky; top: 0; z-index: 50; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+            padding: 10px 18px; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #fff;
+        }
+        .ed-top h1 { margin: 0; font-size: 16px; letter-spacing: 1px; }
+        .ed-top .ed-user { font-size: 11px; color: #cbd5e1; }
+        .ed-top .ed-sp { flex: 1; }
+        .ed-pend {
+            font-size: 11px; font-weight: 700; color: #fde68a; background: rgba(245,158,11,.18);
+            border: 1px solid rgba(245,158,11,.5); padding: 3px 8px; border-radius: 12px; display: none;
+        }
+        .ed-pend.on { display: inline-block; }
+
+        /* ===== Pestañas ===== */
+        .ed-tabs { display: flex; gap: 4px; padding: 12px 18px 0; flex-wrap: wrap; }
+        .ed-tab {
+            border: 1px solid var(--border); border-bottom: none; background: var(--card); color: var(--muted);
+            padding: 9px 16px; border-radius: 8px 8px 0 0; cursor: pointer; font-weight: 700; font-size: 12px; letter-spacing: .5px;
+        }
+        .ed-tab.act { background: var(--navy); color: #fff; border-color: var(--navy); }
+        [data-theme="dark"] .ed-tab.act { color: #0f172a; }
+        .ed-tab .n { font-weight: 600; opacity: .75; margin-left: 4px; }
+        .ed-panel { display: none; margin: 0 18px 24px; background: var(--card); border: 1px solid var(--border); border-radius: 0 8px 8px 8px; padding: 16px; }
+        .ed-panel.act { display: block; }
+
+        /* ===== Formularios ===== */
+        .ed-form {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;
+            background: var(--pink); border: 1px solid var(--border); border-radius: 6px; padding: 12px; margin-bottom: 14px;
+        }
+        .ed-form .f { display: flex; flex-direction: column; gap: 3px; }
+        .ed-form .f.ancho { grid-column: span 2; }
+        .ed-form label { font-size: 10px; font-weight: 700; color: var(--navy); text-transform: uppercase; letter-spacing: .5px; }
+        .ed-form .req { color: var(--red); }
+        .ed-form input, .ed-form select, .ed-search {
+            padding: 7px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 12px;
+            background: var(--card); color: var(--text); width: 100%;
+        }
+        .ed-form input[readonly] { background: transparent; opacity: .8; }
+        .ed-form .chk { flex-direction: row; align-items: center; gap: 6px; padding-top: 16px; }
+        .ed-form .chk input { width: auto; }
+        .ed-form .chk label { font-size: 11px; }
+        .ed-form .acciones { display: flex; gap: 8px; align-items: flex-end; grid-column: 1 / -1; flex-wrap: wrap; }
+        .ed-form .modo { font-size: 11px; font-weight: 700; color: var(--warn); margin-left: auto; align-self: center; }
+        .ed-hint { font-size: 11px; color: var(--muted); grid-column: 1 / -1; margin-top: -4px; }
+        .campo-error { border-color: var(--red) !important; box-shadow: 0 0 0 1px var(--red); }
+
+        .btn {
+            border: none; border-radius: 4px; padding: 8px 14px; font-size: 11px; font-weight: 700; cursor: pointer;
+            text-transform: uppercase; color: #fff; background: var(--navy);
+        }
+        [data-theme="dark"] .btn { color: #0f172a; }
+        .btn:hover { filter: brightness(1.1); }
+        .btn.sec { background: transparent; color: var(--red); border: 1px solid var(--red); }
+        .btn.ok { background: #217346; color: #fff; }
+        .btn.naranja { background: #E67E22; color: #fff; }
+        .btn.gris { background: #555; color: #fff; }
+        .btn:disabled { opacity: .45; cursor: not-allowed; }
+        .btn-ico { background: none; border: none; cursor: pointer; font-size: 14px; padding: 2px 4px; }
+
+        /* ===== Listados ===== */
+        .ed-bar { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
+        .ed-bar .ed-search { max-width: 320px; }
+        .ed-bar .cnt { font-size: 11px; color: var(--muted); font-weight: 600; }
+        .ed-tabla-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 6px; max-height: 60vh; overflow-y: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th {
+            position: sticky; top: 0; background: var(--navy); color: #fff; text-align: left; font-size: 10px; font-weight: 600;
+            text-transform: uppercase; padding: 8px 8px; white-space: nowrap;
+        }
+        [data-theme="dark"] th { color: #0f172a; }
+        td { padding: 6px 8px; border-bottom: 1px solid var(--border); background: var(--row); vertical-align: middle; }
+        tr:nth-child(even) td { background: var(--row-alt); }
+        tr.editando td { outline: 2px solid var(--warn); outline-offset: -2px; }
+        td.acc { white-space: nowrap; width: 1%; }
+        .tag { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 10px; color: #fff; margin: 1px 2px 1px 0; }
+        .tag.e { background: #27AE60; } .tag.s { background: #C0392B; } .tag.l { background: #E67E22; }
+        .tag.ed { background: #1C355E; } .tag.yo { background: #6b7280; }
+        .ed-grupo td { background: transparent !important; font-weight: 700; color: var(--navy); font-size: 11px; padding-top: 12px; }
+        .vacio { padding: 16px; text-align: center; color: var(--muted); }
+
+        /* ===== Modales y toasts ===== */
+        .ed-modal { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: none; align-items: center; justify-content: center; z-index: 4000; padding: 16px; }
+        .ed-modal.on { display: flex; }
+        .ed-modal .caja { background: var(--card); color: var(--text); border-radius: 10px; padding: 20px; max-width: 520px; width: 100%; box-shadow: 0 20px 50px rgba(0,0,0,.35); }
+        .ed-modal h3 { margin: 0 0 10px; color: var(--navy); font-size: 15px; }
+        .ed-modal .msg { white-space: pre-line; line-height: 1.5; margin-bottom: 16px; }
+        .ed-modal .pie { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+        .ed-modal ul { margin: 8px 0 14px; padding-left: 18px; }
+        .ed-modal li { margin: 4px 0; }
+        #ed-toasts { position: fixed; top: 16px; right: 16px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; max-width: 380px; }
+        .ed-toast {
+            display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 6px; color: #fff; font-weight: 600;
+            font-size: 12px; box-shadow: 0 4px 12px rgba(0,0,0,.25); animation: edIn .25s ease-out; transition: opacity .3s, transform .3s;
+        }
+        .ed-toast.error { background: #C00000; } .ed-toast.success { background: #27AE60; } .ed-toast.info { background: #1C355E; }
+        .ed-toast.fuera { opacity: 0; transform: translateX(40px); }
+        .ed-toast button { margin-left: auto; background: none; border: none; color: #fff; font-size: 16px; cursor: pointer; line-height: 1; }
+        @keyframes edIn { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: none; } }
+        @media (max-width: 720px) {
+            .ed-form .f.ancho { grid-column: auto; }
+            .ed-panel { margin: 0 8px 16px; padding: 10px; }
+            .ed-tabs { padding: 10px 8px 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ===== Acceso: solo contraseñas con permiso de EDITOR ===== -->
+    <div id="ed-login">
+        <form class="login-card" onsubmit="event.preventDefault(); edEntrar();">
+            <h1>EDITOR</h1>
+            <p>Web de cliente · terminales, destinos, ADR, siglas y contraseñas</p>
+            <input type="password" id="ed-pass" placeholder="Contraseña de administrador" autocomplete="off" autofocus>
+            <button type="submit" class="btn" style="width:100%;">ENTRAR</button>
+            <div class="ed-err" id="ed-login-err"></div>
+        </form>
+    </div>
+
+    <!-- ===== Cabecera ===== -->
+    <div class="ed-top">
+        <h1>🛠️ EDITOR · WEB DE CLIENTE</h1>
+        <span class="ed-user" id="ed-user"></span>
+        <span class="ed-sp"></span>
+        <span class="ed-pend" id="ed-pend">● Cambios sin guardar</span>
+        <button type="button" class="btn ok" id="ed-btn-guardar" onclick="edGuardar()" title="Escribe los archivos de WEB_cliente/datos">💾 GUARDAR</button>
+        <button type="button" class="btn gris" onclick="edTema()" title="Tema claro / oscuro" id="ed-btn-tema">🌙</button>
+        <button type="button" class="btn naranja" onclick="edSalir()">SALIR</button>
+    </div>
+
+    <div class="ed-tabs">
+        <button type="button" class="ed-tab act" data-tab="dest" onclick="edTab('dest')">📍 DESTINOS<span class="n" id="n-dest"></span></button>
+        <button type="button" class="ed-tab" data-tab="adr" onclick="edTab('adr')">☢️ ADR (ONU · CLASE)<span class="n" id="n-adr"></span></button>
+        <button type="button" class="ed-tab" data-tab="sig" onclick="edTab('sig')">🔠 SIGLAS<span class="n" id="n-sig"></span></button>
+        <button type="button" class="ed-tab" data-tab="acc" onclick="edTab('acc')">🔑 CONTRASEÑAS<span class="n" id="n-acc"></span></button>
+        <button type="button" class="ed-tab" data-tab="ter" onclick="edTab('ter')">🏢 TERMINALES / ESTACIONES<span class="n" id="n-ter"></span></button>
+    </div>
+
+    <!-- ===== TERMINALES / ESTACIONES (04/10/2026) ===== -->
+    <div class="ed-panel" id="p-ter">
+        <div class="ed-form">
+            <div class="f ancho">
+                <label for="ter-nombre">Nombre <span class="req">*</span></label>
+                <input type="text" id="ter-nombre" maxlength="40" placeholder="EJ: TERMINAL CONSTANTI">
+            </div>
+            <div class="f">
+                <label for="ter-tipo">Tipo <span class="req">*</span></label>
+                <select id="ter-tipo">
+                    <option value="terminal">TERMINAL</option>
+                    <option value="estacion">ESTACIÓN</option>
+                </select>
+            </div>
+            <div class="f">
+                <label for="ter-id">Identificador</label>
+                <input type="text" id="ter-id" readonly placeholder="automático">
+            </div>
+            <div class="f chk">
+                <input type="checkbox" id="ter-activa" checked><label for="ter-activa">✅ Activa (se ofrece al acceder)</label>
+            </div>
+            <div class="ed-hint">Al acceder a la web se pregunta para qué terminal o estación se harán las reservas; esa es la que viaja en el QR (con su identificador) y en el reporte impreso (con su nombre). El identificador se crea a partir del nombre y no cambia al renombrar. Las cuatro iniciales son las de UTI-STOCK, con su mismo identificador.</div>
+            <div class="acciones">
+                <button type="button" class="btn" onclick="edTerGuardar()" id="ter-btn">➕ AÑADIR</button>
+                <button type="button" class="btn sec" onclick="edTerLimpiar()">LIMPIAR</button>
+                <span class="modo" id="ter-modo"></span>
+            </div>
+        </div>
+        <div class="ed-bar">
+            <input type="search" class="ed-search" id="ter-buscar" placeholder="🔍 Buscar terminal o estación…" oninput="edTerRender()">
+            <span class="cnt" id="ter-cnt"></span>
+        </div>
+        <div class="ed-tabla-wrap"><table>
+            <thead><tr><th>Nombre</th><th>Tipo</th><th>Identificador</th><th>Estado</th><th></th></tr></thead>
+            <tbody id="ter-body"></tbody>
+        </table></div>
+    </div>
+
+    <!-- ===== DESTINOS ===== -->
+    <div class="ed-panel act" id="p-dest">
+        <div class="ed-form">
+            <div class="f ancho">
+                <label for="dest-nombre">Destino <span class="req">*</span></label>
+                <input type="text" id="dest-nombre" maxlength="40" placeholder="EJ: MADRID-ABROÑIGAL" title="Tal cual figura en el catálogo de destinos del sistema: es lo que viaja en el QR">
+            </div>
+            <div class="f">
+                <label for="dest-grupo">Grupo <span class="req">*</span></label>
+                <select id="dest-grupo" onchange="edDestGrupoChange()"></select>
+            </div>
+            <div class="f" id="dest-grupo-nuevo-f" style="display:none;">
+                <label for="dest-grupo-nuevo">Nombre del grupo nuevo <span class="req">*</span></label>
+                <input type="text" id="dest-grupo-nuevo" maxlength="30" placeholder="EJ: 🚚 CARRETERA">
+            </div>
+            <div class="ed-hint">El nombre debe escribirse EXACTAMENTE como en el catálogo de destinos del sistema: es el valor que viaja en el QR y el que compara el escáner.</div>
+            <div class="acciones">
+                <button type="button" class="btn" onclick="edDestGuardar()" id="dest-btn">➕ AÑADIR</button>
+                <button type="button" class="btn sec" onclick="edDestLimpiar()">LIMPIAR</button>
+                <span class="modo" id="dest-modo"></span>
+            </div>
+        </div>
+        <div class="ed-bar">
+            <input type="search" class="ed-search" id="dest-buscar" placeholder="🔍 Buscar destino o grupo…" oninput="edDestRender()">
+            <span class="cnt" id="dest-cnt"></span>
+        </div>
+        <div class="ed-tabla-wrap"><table>
+            <thead><tr><th>Destino</th><th>Usado en siglas</th><th></th></tr></thead>
+            <tbody id="dest-body"></tbody>
+        </table></div>
+    </div>
+
+    <!-- ===== ADR ===== -->
+    <div class="ed-panel" id="p-adr">
+        <div class="ed-form">
+            <div class="f">
+                <label for="adr-onu">ONU <span class="req">*</span></label>
+                <input type="text" id="adr-onu" maxlength="4" inputmode="numeric" placeholder="0000">
+            </div>
+            <div class="f">
+                <label for="adr-clase">Clase <span class="req">*</span></label>
+                <input type="text" id="adr-clase" maxlength="4" placeholder="3 · 2.1 · 1.1D">
+            </div>
+            <div class="f ancho">
+                <label for="adr-desc">Descripción</label>
+                <input type="text" id="adr-desc" maxlength="120" placeholder="NOMBRE DE LA MERCANCÍA">
+            </div>
+            <div class="f chk">
+                <input type="checkbox" id="adr-amb"><label for="adr-amb">🐟 Peligroso para el medio ambiente</label>
+            </div>
+            <div class="ed-hint">ONU: 4 dígitos. Clase: hasta 4 caracteres (números y signos; las de explosivos llevan letra, p. ej. 1.1D).</div>
+            <div class="acciones">
+                <button type="button" class="btn" onclick="edAdrGuardar()" id="adr-btn">➕ AÑADIR</button>
+                <button type="button" class="btn sec" onclick="edAdrLimpiar()">LIMPIAR</button>
+                <span class="modo" id="adr-modo"></span>
+            </div>
+        </div>
+        <div class="ed-bar">
+            <input type="search" class="ed-search" id="adr-buscar" placeholder="🔍 Buscar ONU, clase o descripción…" oninput="edAdrRender()">
+            <span class="cnt" id="adr-cnt"></span>
+        </div>
+        <div class="ed-tabla-wrap"><table>
+            <thead><tr><th>ONU</th><th>Clase</th><th>Descripción</th><th>M. amb.</th><th></th></tr></thead>
+            <tbody id="adr-body"></tbody>
+        </table></div>
+    </div>
+
+    <!-- ===== SIGLAS ===== -->
+    <div class="ed-panel" id="p-sig">
+        <div class="ed-form">
+            <div class="f">
+                <label for="sig-siglas">Siglas <span class="req">*</span></label>
+                <input type="text" id="sig-siglas" maxlength="7" placeholder="TRFA" title="4 letras y hasta 3 números (TRFA, RICU30…)">
+            </div>
+            <div class="f">
+                <label for="sig-pies">Nº Pies</label>
+                <select id="sig-pies"></select>
+            </div>
+            <div class="f">
+                <label for="sig-tara">Tara (kg)</label>
+                <input type="text" id="sig-tara" maxlength="4" inputmode="numeric" placeholder="0-9999">
+            </div>
+            <div class="f">
+                <label for="sig-peso">Peso (kg)</label>
+                <input type="text" id="sig-peso" maxlength="5" inputmode="numeric" placeholder="0 = vacío">
+            </div>
+            <div class="f ancho">
+                <label for="sig-destino">Destino</label>
+                <select id="sig-destino"></select>
+            </div>
+            <div class="f">
+                <label for="sig-onu">ONU</label>
+                <input type="text" id="sig-onu" maxlength="4" inputmode="numeric" list="sig-onu-list" placeholder="ONU">
+                <datalist id="sig-onu-list"></datalist>
+            </div>
+            <div class="f">
+                <label for="sig-clase">Clase</label>
+                <input type="text" id="sig-clase" readonly placeholder="automática">
+            </div>
+            <div class="ed-hint">Al escribir la referencia de un contenedor que empiece por estas siglas, GENERAR ENTRADA y LISTA RESERVAS rellenan solos los parámetros que tengan valor. Si coinciden varias, gana la más larga (RICU30 antes que RICU).</div>
+            <div class="acciones">
+                <button type="button" class="btn" onclick="edSigGuardar()" id="sig-btn">➕ AÑADIR</button>
+                <button type="button" class="btn sec" onclick="edSigLimpiar()">LIMPIAR</button>
+                <span class="modo" id="sig-modo"></span>
+            </div>
+        </div>
+        <div class="ed-bar">
+            <input type="search" class="ed-search" id="sig-buscar" placeholder="🔍 Buscar siglas, destino u ONU…" oninput="edSigRender()">
+            <span class="cnt" id="sig-cnt"></span>
+        </div>
+        <div class="ed-tabla-wrap"><table>
+            <thead><tr><th>Siglas</th><th>Pies</th><th>Tara</th><th>Peso</th><th>Destino</th><th>ONU · Clase</th><th></th></tr></thead>
+            <tbody id="sig-body"></tbody>
+        </table></div>
+    </div>
+
+    <!-- ===== CONTRASEÑAS ===== -->
+    <div class="ed-panel" id="p-acc">
+        <div class="ed-form">
+            <div class="f">
+                <label for="acc-nombre">Nombre <span class="req">*</span></label>
+                <input type="text" id="acc-nombre" maxlength="24" placeholder="EJ: TRANSPORTES SUR">
+            </div>
+            <div class="f">
+                <label for="acc-pass">Contraseña <span class="req" id="acc-pass-req">*</span></label>
+                <input type="password" id="acc-pass" maxlength="32" autocomplete="new-password" placeholder="mín. 6 caracteres">
+            </div>
+            <div class="f">
+                <label for="acc-pass2">Repetir contraseña</label>
+                <input type="password" id="acc-pass2" maxlength="32" autocomplete="new-password">
+            </div>
+            <div class="f ancho">
+                <label for="acc-perm">Acceso a la web <span class="req">*</span></label>
+                <select id="acc-perm">
+                    <option value="todos">TODOS · entrada, salida y lista de reservas</option>
+                    <option value="entrada_salida">GENERAR ENTRADA y SALIDA</option>
+                    <option value="entrada">Solo GENERAR ENTRADA</option>
+                    <option value="salida">Solo GENERAR SALIDA</option>
+                    <option value="lista">Solo LISTA RESERVAS</option>
+                    <option value="ninguno">Ninguno (solo EDITOR)</option>
+                </select>
+            </div>
+            <div class="f chk">
+                <input type="checkbox" id="acc-editor"><label for="acc-editor">🛠️ Administrador del EDITOR</label>
+            </div>
+            <div class="ed-hint" id="acc-hint">Las contraseñas no distinguen mayúsculas y nunca se guardan: solo su huella SHA-256. Al editar, deje la contraseña en blanco para no cambiarla.</div>
+            <div class="acciones">
+                <button type="button" class="btn" onclick="edAccGuardar()" id="acc-btn">➕ AÑADIR</button>
+                <button type="button" class="btn sec" onclick="edAccLimpiar()">LIMPIAR</button>
+                <span class="modo" id="acc-modo"></span>
+            </div>
+        </div>
+        <div class="ed-bar">
+            <input type="search" class="ed-search" id="acc-buscar" placeholder="🔍 Buscar por nombre…" oninput="edAccRender()">
+            <span class="cnt" id="acc-cnt"></span>
+        </div>
+        <div class="ed-tabla-wrap"><table>
+            <thead><tr><th>Nombre</th><th>Acceso a la web</th><th>Editor</th><th></th></tr></thead>
+            <tbody id="acc-body"></tbody>
+        </table></div>
+    </div>
+
+    <!-- ===== Modal de confirmación / aviso ===== -->
+    <div class="ed-modal" id="ed-modal">
+        <div class="caja">
+            <h3 id="ed-modal-tit"></h3>
+            <div class="msg" id="ed-modal-msg"></div>
+            <div id="ed-modal-extra"></div>
+            <div class="pie" id="ed-modal-pie"></div>
+        </div>
+    </div>
+
+    <div id="ed-toasts"></div>
+
+    <script>
+    // =====================================================================
+    //  EDITOR · WEB DE CLIENTE
+    // =====================================================================
+    const ED_PIES = ['20', '22', '24', '26', '30', '40', '45'];
+    const ED_PREFIJO_DEF = 'UTI-CLIENTE|';
+    const ED_PERMISOS = {
+        todos:          { entrada: true,  salida: true,  lista: true  },
+        entrada_salida: { entrada: true,  salida: true,  lista: false },
+        entrada:        { entrada: true,  salida: false, lista: false },
+        salida:         { entrada: false, salida: true,  lista: false },
+        lista:          { entrada: false, salida: false, lista: true  },
+        ninguno:        { entrada: false, salida: false, lista: false }
+    };
+
+    // Copia de trabajo de los datos (no se toca el original hasta GUARDAR)
+    const clonar = v => JSON.parse(JSON.stringify(v));
+    const ED = {
+        destinos: clonar(Array.isArray(window.UTI_DESTINOS_GRUPOS) ? window.UTI_DESTINOS_GRUPOS : []),
+        adr:      clonar(Array.isArray(window.UTI_ADR_DATOS) ? window.UTI_ADR_DATOS : []),
+        siglas:   clonar(Array.isArray(window.UTI_SIGLAS_DATOS) ? window.UTI_SIGLAS_DATOS : []),
+        accesos:  clonar(window.UTI_ACCESOS_DATOS && Array.isArray(window.UTI_ACCESOS_DATOS.lista)
+                    ? window.UTI_ACCESOS_DATOS : { prefijo: ED_PREFIJO_DEF, lista: [] }),
+        // 04/10/2026: terminales y estaciones
+        terminales: clonar(Array.isArray(window.UTI_TERMINALES_DATOS) ? window.UTI_TERMINALES_DATOS : []),
+        sucio: false
+    };
+    let edSesion = null;          // id de la contraseña con la que se ha entrado
+    const edEdit = { dest: null, adr: null, sig: null, acc: null, ter: null };   // qué se está editando
+
+    // ---------- utilidades ----------
+    function edEsc(v) {
+        return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+    const $ = id => document.getElementById(id);
+    const norm = s => String(s == null ? '' : s).trim().toUpperCase();
+    const sinAcentos = s => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '');
+    // Búsqueda parcial, sin mayúsculas ni acentos (Regla 3)
+    const coincide = (texto, q) => !q || sinAcentos(texto).toLowerCase().includes(sinAcentos(q).toLowerCase());
+
+    function edToast(msg, tipo = 'info') {
+        const t = document.createElement('div');
+        t.className = `ed-toast ${tipo}`;
+        t.innerHTML = `<span>${tipo === 'error' ? '⚠️' : tipo === 'success' ? '✅' : 'ℹ️'}</span><span>${edEsc(msg)}</span><button type="button" title="Cerrar">×</button>`;
+        const cerrar = () => { t.classList.add('fuera'); setTimeout(() => t.remove(), 300); };
+        t.querySelector('button').onclick = cerrar;
+        $('ed-toasts').appendChild(t);
+        setTimeout(cerrar, 4000);
+    }
+
+    // Ventana de confirmación propia (sin confirm() del navegador). Devuelve promesa.
+    function edConfirmar(titulo, msg, textoOk = 'ACEPTAR', peligro = false) {
+        return new Promise(res => {
+            $('ed-modal-tit').textContent = titulo;
+            $('ed-modal-msg').textContent = msg;
+            $('ed-modal-extra').innerHTML = '';
+            $('ed-modal-pie').innerHTML = '';
+            const cancelar = Object.assign(document.createElement('button'), { type: 'button', className: 'btn gris', textContent: 'CANCELAR' });
+            const ok = Object.assign(document.createElement('button'), { type: 'button', className: 'btn ' + (peligro ? 'sec' : 'ok'), textContent: textoOk });
+            const fin = v => { $('ed-modal').classList.remove('on'); document.removeEventListener('keydown', tecla); res(v); };
+            const tecla = e => { if (e.key === 'Escape') fin(false); };
+            cancelar.onclick = () => fin(false);
+            ok.onclick = () => fin(true);
+            $('ed-modal-pie').append(cancelar, ok);
+            $('ed-modal').classList.add('on');
+            document.addEventListener('keydown', tecla);
+            ok.focus();
+        });
+    }
+
+    function edMarcar(campos) {
+        document.querySelectorAll('.campo-error').forEach(el => el.classList.remove('campo-error'));
+        campos.forEach(id => $(id) && $(id).classList.add('campo-error'));
+    }
+
+    function edSucio() {
+        ED.sucio = true;
+        $('ed-pend').classList.add('on');
+        edContadores();
+    }
+
+    function edContadores() {
+        $('n-dest').textContent = `(${ED.destinos.reduce((n, g) => n + g.items.length, 0)})`;
+        $('n-adr').textContent = `(${ED.adr.length})`;
+        $('n-sig').textContent = `(${ED.siglas.length})`;
+        $('n-acc').textContent = `(${ED.accesos.lista.length})`;
+        $('n-ter').textContent = `(${ED.terminales.length})`;
+    }
+
+    // ---------- SHA-256 (JavaScript puro; mismo cálculo que index.html) ----------
+    function sha256Hex(texto) {
+        const K = [
+            0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+            0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+            0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+            0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+            0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+            0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+            0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+            0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
+        ];
+        const H = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19];
+        const bytes = Array.from(new TextEncoder().encode(texto));
+        const bits = bytes.length * 8;
+        bytes.push(0x80);
+        while (bytes.length % 64 !== 56) bytes.push(0);
+        for (let i = 7; i >= 0; i--) bytes.push(i >= 4 ? 0 : (bits >>> (i * 8)) & 0xff);
+        const rotr = (x, n) => (x >>> n) | (x << (32 - n));
+        const W = new Array(64);
+        for (let off = 0; off < bytes.length; off += 64) {
+            for (let t = 0; t < 16; t++) {
+                const j = off + t * 4;
+                W[t] = ((bytes[j] << 24) | (bytes[j + 1] << 16) | (bytes[j + 2] << 8) | bytes[j + 3]) >>> 0;
+            }
+            for (let t = 16; t < 64; t++) {
+                const s0 = rotr(W[t - 15], 7) ^ rotr(W[t - 15], 18) ^ (W[t - 15] >>> 3);
+                const s1 = rotr(W[t - 2], 17) ^ rotr(W[t - 2], 19) ^ (W[t - 2] >>> 10);
+                W[t] = (W[t - 16] + s0 + W[t - 7] + s1) >>> 0;
+            }
+            let [a, b, c, d, e, f, g, h] = H;
+            for (let t = 0; t < 64; t++) {
+                const S1 = rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25);
+                const ch = (e & f) ^ (~e & g);
+                const t1 = (h + S1 + ch + K[t] + W[t]) >>> 0;
+                const S0 = rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22);
+                const maj = (a & b) ^ (a & c) ^ (b & c);
+                const t2 = (S0 + maj) >>> 0;
+                h = g; g = f; f = e; e = (d + t1) >>> 0;
+                d = c; c = b; b = a; a = (t1 + t2) >>> 0;
+            }
+            H[0] = (H[0] + a) >>> 0; H[1] = (H[1] + b) >>> 0; H[2] = (H[2] + c) >>> 0; H[3] = (H[3] + d) >>> 0;
+            H[4] = (H[4] + e) >>> 0; H[5] = (H[5] + f) >>> 0; H[6] = (H[6] + g) >>> 0; H[7] = (H[7] + h) >>> 0;
+        }
+        return H.map(x => x.toString(16).padStart(8, '0')).join('');
+    }
+    const edHash = pass => sha256Hex((ED.accesos.prefijo || ED_PREFIJO_DEF) + norm(pass));
+
+    // ---------- Acceso al EDITOR ----------
+    function edEntrar() {
+        const err = $('ed-login-err');
+        const pass = $('ed-pass').value;
+        if (!window.UTI_ACCESOS_DATOS || !Array.isArray(window.UTI_ACCESOS_DATOS.lista)) {
+            err.textContent = 'Falta el archivo datos/accesos_datos.js';
+            return;
+        }
+        const h = edHash(pass);
+        const acc = ED.accesos.lista.find(a => a.hash === h);
+        if (!acc) { err.textContent = 'Contraseña incorrecta.'; $('ed-pass').value = ''; return; }
+        if (!acc.permisos || !acc.permisos.editor) { err.textContent = 'Esta contraseña no tiene acceso al EDITOR.'; $('ed-pass').value = ''; return; }
+        edSesion = acc.id;
+        $('ed-user').textContent = `Sesión: ${acc.nombre}`;
+        $('ed-login').style.display = 'none';
+        $('ed-pass').value = '';
+        if (acc.hash === sha256Hex(ED_PREFIJO_DEF + 'EDITOR-2026')) {
+            edToast('Está usando la contraseña inicial EDITOR-2026: cámbiela en la pestaña CONTRASEÑAS.', 'error');
+        }
+    }
+
+    async function edSalir() {
+        if (ED.sucio && !await edConfirmar('Cambios sin guardar', 'Hay cambios sin guardar. Si sale ahora se perderán.\n¿Salir de todos modos?', 'SALIR', true)) return;
+        ED.sucio = false;
+        location.reload();
+    }
+
+    // ---------- Pestañas y tema ----------
+    function edTab(t) {
+        document.querySelectorAll('.ed-tab').forEach(b => b.classList.toggle('act', b.dataset.tab === t));
+        document.querySelectorAll('.ed-panel').forEach(p => p.classList.toggle('act', p.id === 'p-' + t));
+        try { localStorage.setItem('uti_editor_tab', t); } catch (e) {}
+    }
+    function edTema(forzar) {
+        const oscuro = forzar !== undefined ? forzar : document.documentElement.getAttribute('data-theme') !== 'dark';
+        document.documentElement.setAttribute('data-theme', oscuro ? 'dark' : 'light');
+        $('ed-btn-tema').textContent = oscuro ? '☀️' : '🌙';
+        if (forzar === undefined) { try { localStorage.setItem('uti_editor_theme', oscuro ? 'dark' : 'light'); } catch (e) {} }
+    }
+
+    // =====================================================================
+    //  DESTINOS
+    // =====================================================================
+    const edTodosDestinos = () => ED.destinos.flatMap(g => g.items);
+    const edSiglasCon = (campo, valor) => ED.siglas.filter(s => s[campo] && norm(s[campo]) === norm(valor));
+
+    function edDestGrupos() {
+        const sel = $('dest-grupo');
+        const actual = sel.value;
+        sel.innerHTML = ED.destinos.map((g, i) => `<option value="${i}">${edEsc(g.label)}</option>`).join('') +
+            '<option value="__nuevo">➕ NUEVO GRUPO…</option>';
+        if (actual && sel.querySelector(`option[value="${CSS.escape(actual)}"]`)) sel.value = actual;
+        edDestGrupoChange();
+    }
+    function edDestGrupoChange() {
+        $('dest-grupo-nuevo-f').style.display = $('dest-grupo').value === '__nuevo' ? '' : 'none';
+    }
+
+    function edDestRender() {
+        const q = $('dest-buscar').value.trim();
+        let html = '', n = 0;
+        ED.destinos.forEach((g, gi) => {
+            const items = g.items.map((d, di) => ({ d, di })).filter(x => coincide(x.d, q) || coincide(g.label, q));
+            if (!items.length) return;
+            html += `<tr class="ed-grupo"><td colspan="3">${edEsc(g.label)} · ${g.items.length}</td></tr>`;
+            items.forEach(({ d, di }) => {
+                n++;
+                const usos = edSiglasCon('destino', d).length;
+                const ed = edEdit.dest && edEdit.dest.g === gi && edEdit.dest.i === di;
+                html += `<tr class="${ed ? 'editando' : ''}"><td><strong>${edEsc(d)}</strong></td>
+                    <td>${usos ? usos + ' sigla(s)' : '—'}</td>
+                    <td class="acc"><button type="button" class="btn-ico" title="Editar" onclick="edDestEditar(${gi},${di})">✏️</button><button type="button" class="btn-ico" title="Eliminar" onclick="edDestEliminar(${gi},${di})">🗑️</button></td></tr>`;
+            });
+        });
+        $('dest-body').innerHTML = html || '<tr><td colspan="3" class="vacio">Sin resultados</td></tr>';
+        $('dest-cnt').textContent = `${n} de ${edTodosDestinos().length}`;
+    }
+
+    function edDestLimpiar() {
+        edEdit.dest = null;
+        $('dest-nombre').value = '';
+        $('dest-grupo-nuevo').value = '';
+        $('dest-btn').textContent = '➕ AÑADIR';
+        $('dest-modo').textContent = '';
+        edMarcar([]);
+        edDestGrupos();
+        edDestRender();
+    }
+
+    function edDestEditar(gi, di) {
+        edEdit.dest = { g: gi, i: di, valor: ED.destinos[gi].items[di] };
+        $('dest-nombre').value = edEdit.dest.valor;
+        edDestGrupos();
+        $('dest-grupo').value = String(gi);
+        edDestGrupoChange();
+        $('dest-btn').textContent = '💾 GUARDAR CAMBIOS';
+        $('dest-modo').textContent = `Editando: ${edEdit.dest.valor}`;
+        edDestRender();
+        $('dest-nombre').focus();
+    }
+
+    function edDestGuardar() {
+        const nombre = norm($('dest-nombre').value).replace(/\s+/g, ' ');
+        const gSel = $('dest-grupo').value;
+        const errores = [];
+        if (!nombre) errores.push('dest-nombre');
+        if (nombre && !/^[\p{L}\p{N} .\-\/()+&]+$/u.test(nombre)) { edMarcar(['dest-nombre']); edToast('El destino solo admite letras, números, espacios y . - / ( ) + &', 'error'); return; }
+        const nuevoGrupo = gSel === '__nuevo' ? norm($('dest-grupo-nuevo').value) : '';
+        if (gSel === '__nuevo' && !nuevoGrupo) errores.push('dest-grupo-nuevo');
+        if (errores.length) { edMarcar(errores); edToast('Rellene los campos marcados.', 'error'); return; }
+
+        // Sin repetidos (en ningún grupo)
+        const repetido = ED.destinos.some((g, gi) => g.items.some((d, di) =>
+            norm(d) === nombre && !(edEdit.dest && edEdit.dest.g === gi && edEdit.dest.i === di)));
+        if (repetido) { edMarcar(['dest-nombre']); edToast(`El destino ${nombre} ya existe.`, 'error'); return; }
+        if (nuevoGrupo && ED.destinos.some(g => norm(g.label) === nuevoGrupo)) {
+            edMarcar(['dest-grupo-nuevo']); edToast('Ya existe un grupo con ese nombre.', 'error'); return;
+        }
+
+        let gi;
+        if (nuevoGrupo) { ED.destinos.push({ label: nuevoGrupo, items: [] }); gi = ED.destinos.length - 1; }
+        else gi = parseInt(gSel, 10);
+
+        if (edEdit.dest) {
+            const viejo = edEdit.dest.valor;
+            ED.destinos[edEdit.dest.g].items.splice(edEdit.dest.i, 1);
+            if (edEdit.dest.g === gi) ED.destinos[gi].items.splice(edEdit.dest.i, 0, nombre);
+            else ED.destinos[gi].items.push(nombre);
+            // Renombrar arrastra las siglas que lo usaban
+            let arr = 0;
+            if (viejo !== nombre) ED.siglas.forEach(s => { if (s.destino && norm(s.destino) === norm(viejo)) { s.destino = nombre; arr++; } });
+            edQuitarGruposVacios();
+            edToast(`Destino actualizado${arr ? ` (${arr} sigla(s) actualizadas)` : ''}.`, 'success');
+        } else {
+            ED.destinos[gi].items.push(nombre);
+            edToast(`Destino ${nombre} añadido.`, 'success');
+        }
+        edSucio();
+        edDestLimpiar();
+        edSigSelects();
+        edSigRender();
+    }
+
+    function edQuitarGruposVacios() {
+        ED.destinos = ED.destinos.filter(g => g.items.length);
+    }
+
+    async function edDestEliminar(gi, di) {
+        const d = ED.destinos[gi].items[di];
+        const usos = edSiglasCon('destino', d);
+        let msg = `Se eliminará el destino ${d}.`;
+        if (usos.length) msg += `\n\nLo usan ${usos.length} sigla(s) (${usos.map(s => s.siglas).join(', ')}): se les quitará el destino.`;
+        if (!await edConfirmar('Eliminar destino', msg, 'ELIMINAR', true)) return;
+        ED.destinos[gi].items.splice(di, 1);
+        usos.forEach(s => { delete s.destino; });
+        edQuitarGruposVacios();
+        edSucio();
+        edDestLimpiar();
+        edSigSelects();
+        edSigRender();
+        edToast(`Destino ${d} eliminado.`, 'success');
+    }
+
+    // =====================================================================
+    //  ADR
+    // =====================================================================
+    const edAdrClaseOk = c => /^[0-9][0-9A-Z.\/+\-]{0,3}$/.test(c);
+
+    function edAdrRender() {
+        const q = $('adr-buscar').value.trim();
+        const lista = ED.adr.map((a, i) => ({ a, i }))
+            .filter(({ a }) => coincide(a.onu, q) || coincide(a.clase, q) || coincide(a.descripcion || '', q))
+            .sort((x, y) => String(x.a.onu).localeCompare(String(y.a.onu)));
+        $('adr-body').innerHTML = lista.map(({ a, i }) => `<tr class="${edEdit.adr === i ? 'editando' : ''}">
+            <td><strong>${edEsc(a.onu)}</strong></td><td>${edEsc(a.clase)}</td><td>${edEsc(a.descripcion || '')}</td>
+            <td>${a.medio_ambiente ? '🐟' : ''}</td>
+            <td class="acc"><button type="button" class="btn-ico" title="Editar" onclick="edAdrEditar(${i})">✏️</button><button type="button" class="btn-ico" title="Eliminar" onclick="edAdrEliminar(${i})">🗑️</button></td></tr>`).join('')
+            || '<tr><td colspan="5" class="vacio">Sin resultados</td></tr>';
+        $('adr-cnt').textContent = `${lista.length} de ${ED.adr.length}`;
+    }
+
+    function edAdrLimpiar() {
+        edEdit.adr = null;
+        ['adr-onu', 'adr-clase', 'adr-desc'].forEach(id => $(id).value = '');
+        $('adr-amb').checked = false;
+        $('adr-btn').textContent = '➕ AÑADIR';
+        $('adr-modo').textContent = '';
+        edMarcar([]);
+        edAdrRender();
+    }
+
+    function edAdrEditar(i) {
+        const a = ED.adr[i];
+        edEdit.adr = i;
+        $('adr-onu').value = a.onu; $('adr-clase').value = a.clase;
+        $('adr-desc').value = a.descripcion || ''; $('adr-amb').checked = !!a.medio_ambiente;
+        $('adr-btn').textContent = '💾 GUARDAR CAMBIOS';
+        $('adr-modo').textContent = `Editando: ONU ${a.onu}`;
+        edAdrRender();
+        $('adr-onu').focus();
+    }
+
+    function edAdrGuardar() {
+        const onu = $('adr-onu').value.trim();
+        const clase = norm($('adr-clase').value);
+        const desc = norm($('adr-desc').value).replace(/\s+/g, ' ');
+        const err = [];
+        if (!/^\d{4}$/.test(onu)) err.push('adr-onu');
+        if (!edAdrClaseOk(clase)) err.push('adr-clase');
+        if (err.length) { edMarcar(err); edToast('ONU: 4 dígitos. Clase: empieza por número, máx. 4 caracteres.', 'error'); return; }
+        if (ED.adr.some((a, i) => a.onu === onu && i !== edEdit.adr)) { edMarcar(['adr-onu']); edToast(`El ONU ${onu} ya existe.`, 'error'); return; }
+
+        const reg = { onu, clase, descripcion: desc, medio_ambiente: $('adr-amb').checked };
+        if (edEdit.adr !== null) {
+            const viejo = ED.adr[edEdit.adr];
+            ED.adr[edEdit.adr] = reg;
+            // Las siglas que usaban ese ONU se actualizan (número y clase)
+            let arr = 0;
+            ED.siglas.forEach(s => { if (s.onu === viejo.onu) { s.onu = onu; s.clase = clase; arr++; } });
+            edToast(`ONU ${onu} actualizado${arr ? ` (${arr} sigla(s) actualizadas)` : ''}.`, 'success');
+        } else {
+            ED.adr.push(reg);
+            edToast(`ONU ${onu} añadido.`, 'success');
+        }
+        edSucio();
+        edAdrLimpiar();
+        edSigSelects();
+        edSigRender();
+    }
+
+    async function edAdrEliminar(i) {
+        const a = ED.adr[i];
+        const usos = ED.siglas.filter(s => s.onu === a.onu);
+        let msg = `Se eliminará el ONU ${a.onu} (clase ${a.clase}).`;
+        if (usos.length) msg += `\n\nLo usan ${usos.length} sigla(s) (${usos.map(s => s.siglas).join(', ')}): se les quitará el ONU.`;
+        if (!await edConfirmar('Eliminar ADR', msg, 'ELIMINAR', true)) return;
+        ED.adr.splice(i, 1);
+        usos.forEach(s => { delete s.onu; delete s.clase; });
+        edSucio();
+        edAdrLimpiar();
+        edSigSelects();
+        edSigRender();
+        edToast(`ONU ${a.onu} eliminado.`, 'success');
+    }
+
+    // =====================================================================
+    //  SIGLAS
+    // =====================================================================
+    function edSigSelects() {
+        const pies = $('sig-pies'), vp = pies.value;
+        pies.innerHTML = '<option value="">—</option>' + ED_PIES.map(p => `<option value="${p}">${p}</option>`).join('');
+        pies.value = vp;
+        const dest = $('sig-destino'), vd = dest.value;
+        dest.innerHTML = '<option value="">—</option>' + ED.destinos.map(g =>
+            `<optgroup label="${edEsc(g.label)}">${g.items.map(d => `<option value="${edEsc(d)}">${edEsc(d)}</option>`).join('')}</optgroup>`).join('');
+        dest.value = edTodosDestinos().includes(vd) ? vd : '';
+        $('sig-onu-list').innerHTML = ED.adr.map(a => `<option value="${edEsc(a.onu)}">${edEsc(a.clase)} · ${edEsc(a.descripcion || '')}</option>`).join('');
+    }
+
+    function edSigRender() {
+        const q = $('sig-buscar').value.trim();
+        const lista = ED.siglas.map((s, i) => ({ s, i }))
+            .filter(({ s }) => coincide(s.siglas, q) || coincide(s.destino || '', q) || coincide(s.onu || '', q))
+            .sort((x, y) => x.s.siglas.localeCompare(y.s.siglas));
+        const destinos = edTodosDestinos();
+        $('sig-body').innerHTML = lista.map(({ s, i }) => {
+            const destMal = s.destino && !destinos.includes(s.destino);
+            return `<tr class="${edEdit.sig === i ? 'editando' : ''}">
+            <td><strong>${edEsc(s.siglas)}</strong></td><td>${edEsc(s.pies || '—')}</td><td>${edEsc(s.tara || '—')}</td>
+            <td>${s.peso === undefined || s.peso === '' ? '—' : edEsc(s.peso)}</td>
+            <td>${s.destino ? edEsc(s.destino) + (destMal ? ' ⚠️' : '') : '—'}</td>
+            <td>${s.onu ? edEsc(s.onu) + ' · ' + edEsc(s.clase || '') : '—'}</td>
+            <td class="acc"><button type="button" class="btn-ico" title="Editar" onclick="edSigEditar(${i})">✏️</button><button type="button" class="btn-ico" title="Eliminar" onclick="edSigEliminar(${i})">🗑️</button></td></tr>`;
+        }).join('') || '<tr><td colspan="7" class="vacio">Sin resultados</td></tr>';
+        $('sig-cnt').textContent = `${lista.length} de ${ED.siglas.length}`;
+    }
+
+    function edSigLimpiar() {
+        edEdit.sig = null;
+        ['sig-siglas', 'sig-tara', 'sig-peso', 'sig-onu', 'sig-clase'].forEach(id => $(id).value = '');
+        edSigSelects();
+        $('sig-pies').value = ''; $('sig-destino').value = '';
+        $('sig-btn').textContent = '➕ AÑADIR';
+        $('sig-modo').textContent = '';
+        edMarcar([]);
+        edSigRender();
+    }
+
+    function edSigEditar(i) {
+        const s = ED.siglas[i];
+        edEdit.sig = i;
+        edSigSelects();
+        $('sig-siglas').value = s.siglas; $('sig-pies').value = s.pies || ''; $('sig-tara').value = s.tara || '';
+        $('sig-peso').value = s.peso === undefined ? '' : s.peso; $('sig-destino').value = s.destino || '';
+        $('sig-onu').value = s.onu || ''; $('sig-clase').value = s.clase || '';
+        $('sig-btn').textContent = '💾 GUARDAR CAMBIOS';
+        $('sig-modo').textContent = `Editando: ${s.siglas}`;
+        edSigRender();
+        $('sig-siglas').focus();
+    }
+
+    function edSigGuardar() {
+        const siglas = norm($('sig-siglas').value);
+        const pies = $('sig-pies').value, tara = $('sig-tara').value.trim(), peso = $('sig-peso').value.trim();
+        const destino = $('sig-destino').value, onu = $('sig-onu').value.trim();
+        const err = [];
+        if (!/^[A-Z]{4}[0-9]{0,3}$/.test(siglas)) err.push('sig-siglas');
+        if (tara && !(/^\d{1,4}$/.test(tara))) err.push('sig-tara');
+        if (peso && !(/^\d{1,5}$/.test(peso) && +peso <= 45000)) err.push('sig-peso');
+        const adr = onu ? ED.adr.find(a => a.onu === onu) : null;
+        if (onu && !adr) err.push('sig-onu');
+        if (err.length) {
+            edMarcar(err);
+            edToast('Siglas: 4 letras y hasta 3 números. Tara: 0-9999. Peso: 0-45000. ONU: del catálogo ADR.', 'error');
+            return;
+        }
+        if (!pies && !tara && !peso && !destino && !onu) {
+            edMarcar(['sig-pies', 'sig-tara', 'sig-peso', 'sig-destino', 'sig-onu']);
+            edToast('Asigne al menos un parámetro a las siglas.', 'error'); return;
+        }
+        if (ED.siglas.some((s, i) => s.siglas === siglas && i !== edEdit.sig)) { edMarcar(['sig-siglas']); edToast(`Las siglas ${siglas} ya existen.`, 'error'); return; }
+
+        // Solo se guardan los parámetros asignados
+        const reg = { siglas };
+        if (pies) reg.pies = pies;
+        if (tara) reg.tara = String(+tara);
+        if (peso) reg.peso = String(+peso);
+        if (destino) reg.destino = destino;
+        if (adr) { reg.onu = adr.onu; reg.clase = adr.clase; }
+
+        if (edEdit.sig !== null) { ED.siglas[edEdit.sig] = reg; edToast(`Siglas ${siglas} actualizadas.`, 'success'); }
+        else { ED.siglas.push(reg); edToast(`Siglas ${siglas} añadidas.`, 'success'); }
+        edSucio();
+        edSigLimpiar();
+        edDestRender();
+    }
+
+    async function edSigEliminar(i) {
+        const s = ED.siglas[i];
+        if (!await edConfirmar('Eliminar siglas', `Se eliminarán las siglas ${s.siglas}.`, 'ELIMINAR', true)) return;
+        ED.siglas.splice(i, 1);
+        edSucio();
+        edSigLimpiar();
+        edDestRender();
+        edToast(`Siglas ${s.siglas} eliminadas.`, 'success');
+    }
+
+    // =====================================================================
+    //  CONTRASEÑAS
+    // =====================================================================
+    function edPermClave(p) {
+        return Object.keys(ED_PERMISOS).find(k => ['entrada', 'salida', 'lista'].every(c => !!p[c] === ED_PERMISOS[k][c])) || 'todos';
+    }
+    function edPermHtml(p) {
+        const t = [];
+        if (p.entrada && p.salida && p.lista) t.push('<span class="tag l">TODOS</span>');
+        else {
+            if (p.entrada) t.push('<span class="tag e">ENTRADA</span>');
+            if (p.salida) t.push('<span class="tag s">SALIDA</span>');
+            if (p.lista) t.push('<span class="tag l">LISTA RESERVAS</span>');
+        }
+        return t.join('') || '<span style="color:var(--muted)">Ninguno</span>';
+    }
+    const edEditores = () => ED.accesos.lista.filter(a => a.permisos && a.permisos.editor);
+
+    function edAccRender() {
+        const q = $('acc-buscar').value.trim();
+        const lista = ED.accesos.lista.map((a, i) => ({ a, i })).filter(({ a }) => coincide(a.nombre, q));
+        $('acc-body').innerHTML = lista.map(({ a, i }) => `<tr class="${edEdit.acc === i ? 'editando' : ''}">
+            <td><strong>${edEsc(a.nombre)}</strong>${a.id === edSesion ? ' <span class="tag yo">SESIÓN ACTUAL</span>' : ''}</td>
+            <td>${edPermHtml(a.permisos || {})}</td>
+            <td>${a.permisos && a.permisos.editor ? '<span class="tag ed">EDITOR</span>' : '—'}</td>
+            <td class="acc"><button type="button" class="btn-ico" title="Editar" onclick="edAccEditar(${i})">✏️</button><button type="button" class="btn-ico" title="Eliminar" onclick="edAccEliminar(${i})">🗑️</button></td></tr>`).join('')
+            || '<tr><td colspan="4" class="vacio">Sin resultados</td></tr>';
+        $('acc-cnt').textContent = `${lista.length} de ${ED.accesos.lista.length}`;
+    }
+
+    function edAccLimpiar() {
+        edEdit.acc = null;
+        ['acc-nombre', 'acc-pass', 'acc-pass2'].forEach(id => $(id).value = '');
+        $('acc-perm').value = 'todos'; $('acc-editor').checked = false;
+        $('acc-pass-req').style.display = '';
+        $('acc-btn').textContent = '➕ AÑADIR';
+        $('acc-modo').textContent = '';
+        edMarcar([]);
+        edAccRender();
+    }
+
+    function edAccEditar(i) {
+        const a = ED.accesos.lista[i];
+        edEdit.acc = i;
+        $('acc-nombre').value = a.nombre;
+        $('acc-pass').value = ''; $('acc-pass2').value = '';
+        $('acc-perm').value = edPermClave(a.permisos || {});
+        $('acc-editor').checked = !!(a.permisos && a.permisos.editor);
+        $('acc-pass-req').style.display = 'none';
+        $('acc-btn').textContent = '💾 GUARDAR CAMBIOS';
+        $('acc-modo').textContent = `Editando: ${a.nombre} (contraseña en blanco = no se cambia)`;
+        edAccRender();
+        $('acc-nombre').focus();
+    }
+
+    function edAccGuardar() {
+        const nombre = norm($('acc-nombre').value).replace(/\s+/g, ' ');
+        const p1 = $('acc-pass').value, p2 = $('acc-pass2').value;
+        const clave = $('acc-perm').value, esEditor = $('acc-editor').checked;
+        const editando = edEdit.acc !== null;
+        const err = [];
+        if (!nombre) err.push('acc-nombre');
+        if (!editando || p1) {
+            if (p1.trim().length < 6) err.push('acc-pass');
+            else if (p1 !== p2) err.push('acc-pass2');
+        }
+        if (err.length) {
+            edMarcar(err);
+            edToast(err.includes('acc-pass2') ? 'Las contraseñas no coinciden.' : 'Nombre obligatorio y contraseña de al menos 6 caracteres.', 'error');
+            return;
+        }
+        if (clave === 'ninguno' && !esEditor) { edMarcar(['acc-perm']); edToast('Sin acceso a la web, la contraseña debe ser al menos de EDITOR.', 'error'); return; }
+        if (ED.accesos.lista.some((a, i) => norm(a.nombre) === nombre && i !== edEdit.acc)) { edMarcar(['acc-nombre']); edToast('Ya existe una contraseña con ese nombre.', 'error'); return; }
+        const hash = p1 ? edHash(p1) : null;
+        if (hash && ED.accesos.lista.some((a, i) => a.hash === hash && i !== edEdit.acc)) {
+            edMarcar(['acc-pass']); edToast('Esa contraseña ya la usa otra entrada: elija otra.', 'error'); return;
+        }
+        const permisos = Object.assign({}, ED_PERMISOS[clave], { editor: esEditor });
+
+        if (editando) {
+            const a = ED.accesos.lista[edEdit.acc];
+            // Nunca quedarse sin ningún administrador del EDITOR
+            if (a.permisos.editor && !esEditor && edEditores().length === 1) {
+                edMarcar(['acc-editor']); edToast('Es la única contraseña de EDITOR: no se le puede quitar el permiso.', 'error'); return;
+            }
+            a.nombre = nombre;
+            a.permisos = permisos;
+            if (hash) a.hash = hash;
+            if (a.id === edSesion) $('ed-user').textContent = `Sesión: ${nombre}`;
+            edToast(`Contraseña ${nombre} actualizada${hash ? ' (con contraseña nueva)' : ''}.`, 'success');
+        } else {
+            ED.accesos.lista.push({ id: 'acc-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), nombre, hash, permisos });
+            edToast(`Contraseña ${nombre} creada.`, 'success');
+        }
+        edSucio();
+        edAccLimpiar();
+    }
+
+    async function edAccEliminar(i) {
+        const a = ED.accesos.lista[i];
+        if (a.permisos && a.permisos.editor && edEditores().length === 1) {
+            edToast('Es la única contraseña de EDITOR: no se puede eliminar.', 'error'); return;
+        }
+        let msg = `Se eliminará la contraseña ${a.nombre}: quien la use dejará de poder entrar.`;
+        if (a.id === edSesion) msg += '\n\nEs la contraseña con la que ha entrado en esta sesión.';
+        if (!await edConfirmar('Eliminar contraseña', msg, 'ELIMINAR', true)) return;
+        ED.accesos.lista.splice(i, 1);
+        edSucio();
+        edAccLimpiar();
+        edToast(`Contraseña ${a.nombre} eliminada.`, 'success');
+    }
+
+    // =====================================================================
+    //  TERMINALES / ESTACIONES (04/10/2026)
+    //  Toda reserva se hace para una de ellas: index.html la pregunta al acceder.
+    //  El id viaja en el QR, así que se crea una vez (a partir del nombre, como
+    //  los de UTI-STOCK: «terminal_constanti») y no cambia al renombrar.
+    // =====================================================================
+    const ED_TER_TIPOS = { terminal: 'TERMINAL', estacion: 'ESTACIÓN' };
+    const edTerActivas = () => ED.terminales.filter(t => t.activa);
+
+    function edTerIdNuevo(nombre) {
+        const base = String(nombre).toLowerCase().replace(/\s+/g, '_').replace(/[^\p{L}\p{N}_\-.]/gu, '') || 'terminal';
+        let id = base, n = 2;
+        while (ED.terminales.some(t => t.id === id)) id = `${base}_${n++}`;
+        return id;
+    }
+
+    function edTerRender() {
+        const q = $('ter-buscar').value.trim();
+        const lista = ED.terminales.map((t, i) => ({ t, i }))
+            .filter(({ t }) => coincide(t.nombre, q) || coincide(t.id, q) || coincide(ED_TER_TIPOS[t.tipo] || '', q));
+        $('ter-body').innerHTML = lista.map(({ t, i }) => `<tr class="${edEdit.ter === i ? 'editando' : ''}">
+            <td><strong>${edEsc(t.nombre)}</strong></td>
+            <td><span class="tag ${t.tipo === 'estacion' ? 'l' : 'ed'}">${edEsc(ED_TER_TIPOS[t.tipo] || t.tipo)}</span></td>
+            <td style="font-family:monospace;font-size:11px;">${edEsc(t.id)}</td>
+            <td>${t.activa ? '<span class="tag e">ACTIVA</span>' : '<span class="tag yo">INACTIVA</span>'}</td>
+            <td class="acc"><button type="button" class="btn-ico" title="Editar" onclick="edTerEditar(${i})">✏️</button><button type="button" class="btn-ico" title="Eliminar" onclick="edTerEliminar(${i})">🗑️</button></td></tr>`).join('')
+            || '<tr><td colspan="5" class="vacio">Sin resultados</td></tr>';
+        $('ter-cnt').textContent = `${lista.length} de ${ED.terminales.length} · ${edTerActivas().length} activa(s)`;
+    }
+
+    function edTerLimpiar() {
+        edEdit.ter = null;
+        $('ter-nombre').value = ''; $('ter-id').value = '';
+        $('ter-tipo').value = 'terminal'; $('ter-activa').checked = true;
+        $('ter-btn').textContent = '➕ AÑADIR';
+        $('ter-modo').textContent = '';
+        edMarcar([]);
+        edTerRender();
+    }
+
+    function edTerEditar(i) {
+        const t = ED.terminales[i];
+        edEdit.ter = i;
+        $('ter-nombre').value = t.nombre; $('ter-id').value = t.id;
+        $('ter-tipo').value = t.tipo === 'estacion' ? 'estacion' : 'terminal';
+        $('ter-activa').checked = !!t.activa;
+        $('ter-btn').textContent = '💾 GUARDAR CAMBIOS';
+        $('ter-modo').textContent = `Editando: ${t.nombre}`;
+        edTerRender();
+        $('ter-nombre').focus();
+    }
+
+    function edTerGuardar() {
+        const nombre = norm($('ter-nombre').value).replace(/\s+/g, ' ');
+        const tipo = $('ter-tipo').value === 'estacion' ? 'estacion' : 'terminal';
+        const activa = $('ter-activa').checked;
+        if (!nombre) { edMarcar(['ter-nombre']); edToast('El nombre es obligatorio.', 'error'); return; }
+        if (!/^[\p{L}\p{N} .\-\/()&]+$/u.test(nombre)) { edMarcar(['ter-nombre']); edToast('El nombre solo admite letras, números, espacios y . - / ( ) &', 'error'); return; }
+        if (ED.terminales.some((t, i) => norm(t.nombre) === nombre && i !== edEdit.ter)) {
+            edMarcar(['ter-nombre']); edToast(`Ya existe ${nombre}.`, 'error'); return;
+        }
+        if (edEdit.ter !== null) {
+            const t = ED.terminales[edEdit.ter];
+            // Siempre debe quedar al menos una activa: sin ella no se puede acceder a la web
+            if (t.activa && !activa && edTerActivas().length === 1) {
+                edMarcar(['ter-activa']); edToast('Es la única activa: sin ninguna no se podrían hacer reservas.', 'error'); return;
+            }
+            t.nombre = nombre; t.tipo = tipo; t.activa = activa;   // el id no cambia
+            edToast(`${nombre} actualizada.`, 'success');
+        } else {
+            ED.terminales.push({ id: edTerIdNuevo(nombre), nombre, tipo, activa });
+            edToast(`${nombre} añadida.`, 'success');
+        }
+        edSucio();
+        edTerLimpiar();
+    }
+
+    async function edTerEliminar(i) {
+        const t = ED.terminales[i];
+        if (t.activa && edTerActivas().length === 1) {
+            edToast('Es la única activa: sin ninguna no se podrían hacer reservas.', 'error'); return;
+        }
+        if (!await edConfirmar('Eliminar terminal / estación',
+            `Se eliminará ${t.nombre} (${t.id}).\nDejará de ofrecerse al acceder a la web. Los QR ya generados la conservan.`, 'ELIMINAR', true)) return;
+        ED.terminales.splice(i, 1);
+        edSucio();
+        edTerLimpiar();
+        edToast(`${t.nombre} eliminada.`, 'success');
+    }
+
+    // =====================================================================
+    //  GUARDAR: escribe los archivos de WEB_cliente/datos
+    // =====================================================================
+    function edFechaHora() {
+        const n = new Date(), p = x => String(x).padStart(2, '0');
+        return `${p(n.getDate())}/${p(n.getMonth() + 1)}/${n.getFullYear()} ${p(n.getHours())}:${p(n.getMinutes())}`;
+    }
+
+    // Contenido de cada archivo (mismo formato que los originales: una entrada por línea)
+    function edArchivos() {
+        const f = edFechaHora();
+        const lineas = arr => arr.map(x => '    ' + JSON.stringify(x)).join(',\n');
+        const destinos = ED.destinos.filter(g => g.items.length).map(g => ({ label: g.label, items: g.items.slice() }));
+        const adr = ED.adr.slice().sort((a, b) => String(a.onu).localeCompare(String(b.onu)))
+            .map(a => ({ onu: a.onu, clase: a.clase, descripcion: a.descripcion || '', medio_ambiente: !!a.medio_ambiente }));
+        const siglas = ED.siglas.slice().sort((a, b) => a.siglas.localeCompare(b.siglas));
+        const accesos = { prefijo: ED.accesos.prefijo || ED_PREFIJO_DEF, lista: ED.accesos.lista };
+        return {
+            'destinos_datos.js':
+`/*
+ * DESTINOS · WEB DE CLIENTE
+ * Lo usan index.html (GENERAR ENTRADA) y creador de reservas_base.html (LISTA RESERVAS).
+ * El valor debe escribirse EXACTAMENTE como en el catálogo de destinos del sistema:
+ * es el que viaja en el QR y el que compara el MOSTRADOR - SCANNER.
+ * Generado por el EDITOR (registros masivos/editor.html) el ${f}.
+ */
+window.UTI_DESTINOS_GRUPOS = [
+${lineas(destinos)}
+];
+`,
+            'adr_datos.js':
+`/*
+ * CATÁLOGO ADR (ONU → CLASE) · WEB DE CLIENTE
+ * Lo usan index.html (GENERAR ENTRADA) y creador de reservas_base.html (LISTA RESERVAS).
+ * Generado por el EDITOR (registros masivos/editor.html) el ${f} (${adr.length} entradas).
+ */
+window.UTI_ADR_DATOS = [
+${lineas(adr)}
+];
+`,
+            'siglas_datos.js':
+`/*
+ * SIGLAS DE CONTENEDOR · WEB DE CLIENTE
+ * Al escribir la referencia, si empieza por unas siglas se rellenan los parámetros que
+ * tengan valor (pies, tara, peso, destino, ONU/clase). Si coinciden varias, gana la más larga.
+ * Generado por el EDITOR (registros masivos/editor.html) el ${f}.
+ */
+window.UTI_SIGLAS_DATOS = [
+${lineas(siglas)}
+];
+`,
+            'accesos_datos.js':
+`/*
+ * CONTRASEÑAS DE ACCESO · WEB DE CLIENTE
+ * NO contiene contraseñas: solo su huella SHA-256 de prefijo + CONTRASEÑA EN MAYÚSCULAS.
+ * permisos: entrada (GENERAR ENTRADA) · salida (GENERAR SALIDA) · lista (LISTA RESERVAS)
+ *           · editor (registros masivos/editor.html)
+ * Generado por el EDITOR (registros masivos/editor.html) el ${f}.
+ */
+window.UTI_ACCESOS_DATOS = {
+    "prefijo": ${JSON.stringify(accesos.prefijo)},
+    "lista": [
+${accesos.lista.map(a => '        ' + JSON.stringify({ id: a.id, nombre: a.nombre, hash: a.hash, permisos: {
+    entrada: !!a.permisos.entrada, salida: !!a.permisos.salida, lista: !!a.permisos.lista, editor: !!a.permisos.editor } })).join(',\n')}
+    ]
+};
+`,
+            // 04/10/2026
+            'terminales_datos.js':
+`/*
+ * TERMINALES / ESTACIONES · WEB DE CLIENTE
+ * Toda reserva (entrada y salida) se hace para la terminal o estación elegida al acceder:
+ * viaja en el QR (clave «terminal», con el id) y en el reporte impreso (con el nombre).
+ * El id es el mismo que en UTI-STOCK y no cambia al renombrar. tipo: terminal | estacion.
+ * Lo usan index.html y registros masivos/REGISTRO MASIVO.html.
+ * Generado por el EDITOR (registros masivos/editor.html) el ${f}.
+ */
+window.UTI_TERMINALES_DATOS = [
+${lineas(ED.terminales.map(t => ({ id: t.id, nombre: t.nombre, tipo: t.tipo === 'estacion' ? 'estacion' : 'terminal', activa: !!t.activa })))}
+];
+`
+        };
+    }
+
+    let edCarpeta = null;   // carpeta datos elegida en esta sesión (File System Access)
+
+    async function edGuardar() {
+        if (!edEditores().length) { edToast('Debe quedar al menos una contraseña de EDITOR.', 'error'); return; }
+        if (!edTerActivas().length) { edToast('Debe quedar al menos una terminal o estación activa.', 'error'); edTab('ter'); return; }
+        const archivos = edArchivos();
+
+        if (window.showDirectoryPicker) {
+            try {
+                if (!edCarpeta) {
+                    edToast('Elija la carpeta WEB_cliente/datos', 'info');
+                    edCarpeta = await window.showDirectoryPicker({ id: 'uti-web-cliente-datos', mode: 'readwrite' });
+                    // Comprobar que es la carpeta correcta
+                    let esDatos = true;
+                    try { await edCarpeta.getFileHandle('adr_datos.js'); } catch (e) { esDatos = false; }
+                    if (!esDatos && !await edConfirmar('¿Carpeta correcta?',
+                        `La carpeta «${edCarpeta.name}» no contiene adr_datos.js.\nLos datos deben guardarse en WEB_cliente/datos.\n¿Guardar aquí de todos modos?`, 'GUARDAR AQUÍ', true)) {
+                        edCarpeta = null; return;
+                    }
+                }
+                for (const [nombre, contenido] of Object.entries(archivos)) {
+                    const fh = await edCarpeta.getFileHandle(nombre, { create: true });
+                    const w = await fh.createWritable();
+                    await w.write(contenido);
+                    await w.close();
+                }
+                ED.sucio = false;
+                $('ed-pend').classList.remove('on');
+                edToast(`Guardado en «${edCarpeta.name}». Recargue la web de cliente para ver los cambios.`, 'success');
+                return;
+            } catch (e) {
+                if (e && e.name === 'AbortError') { edCarpeta = null; return; }
+                console.error('Guardar en carpeta:', e);
+                edCarpeta = null;
+                edToast('No se pudo escribir en la carpeta: se ofrecen los archivos para descargar.', 'error');
+            }
+        }
+        edDescargas(archivos);
+    }
+
+    // Alternativa: descargar los archivos para copiarlos a WEB_cliente/datos
+    function edDescargas(archivos) {
+        $('ed-modal-tit').textContent = '💾 Guardar los datos';
+        $('ed-modal-msg').textContent = 'Este navegador no permite escribir en la carpeta directamente.\nDescargue los archivos y cópielos en WEB_cliente/datos, sustituyendo los que hay:';
+        $('ed-modal-extra').innerHTML = '<ul>' + Object.keys(archivos).map(n =>
+            `<li><button type="button" class="btn ok" data-f="${edEsc(n)}">⬇️ ${edEsc(n)}</button></li>`).join('') + '</ul>';
+        $('ed-modal-extra').querySelectorAll('button').forEach(b => {
+            b.onclick = () => {
+                const blob = new Blob([archivos[b.dataset.f]], { type: 'text/javascript;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = Object.assign(document.createElement('a'), { href: url, download: b.dataset.f });
+                document.body.appendChild(a); a.click(); a.remove();
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
+                b.textContent = '✅ ' + b.dataset.f;
+            };
+        });
+        $('ed-modal-pie').innerHTML = '';
+        const listo = Object.assign(document.createElement('button'), { type: 'button', className: 'btn', textContent: 'HECHO' });
+        listo.onclick = () => {
+            $('ed-modal').classList.remove('on');
+            ED.sucio = false;
+            $('ed-pend').classList.remove('on');
+        };
+        $('ed-modal-pie').appendChild(listo);
+        $('ed-modal').classList.add('on');
+    }
+
+    // ---------- Arranque ----------
+    window.addEventListener('beforeunload', e => { if (ED.sucio) { e.preventDefault(); e.returnValue = ''; } });
+
+    document.addEventListener('DOMContentLoaded', () => {
+        // Tema (claro por defecto, Regla 5)
+        let tema = 'light';
+        try { tema = localStorage.getItem('uti_editor_theme') || 'light'; } catch (e) {}
+        edTema(tema === 'dark');
+        try { const t = localStorage.getItem('uti_editor_tab'); if (t && $('p-' + t)) edTab(t); } catch (e) {}
+
+        // Filtros de escritura en vivo
+        const filtro = (id, fn) => $(id).addEventListener('input', function () {
+            const pos = this.selectionStart, antes = this.value, v = fn(antes);
+            if (v !== antes) { this.value = v; try { this.setSelectionRange(pos - (antes.length - v.length), pos - (antes.length - v.length)); } catch (e) {} }
+        });
+        filtro('adr-onu', v => v.replace(/\D/g, '').slice(0, 4));
+        filtro('adr-clase', v => v.toUpperCase().replace(/[^0-9A-Z.\/+\-]/g, '').slice(0, 4));
+        filtro('adr-desc', v => v.toUpperCase());
+        filtro('dest-nombre', v => v.toUpperCase());
+        filtro('dest-grupo-nuevo', v => v.toUpperCase());
+        filtro('sig-siglas', v => { const s = v.toUpperCase().replace(/[^A-Z0-9]/g, ''); return (s.slice(0, 4).replace(/[^A-Z]/g, '') + s.slice(4).replace(/\D/g, '')).slice(0, 7); });
+        filtro('sig-tara', v => v.replace(/\D/g, '').slice(0, 4));
+        filtro('sig-peso', v => v.replace(/\D/g, '').slice(0, 5));
+        filtro('sig-onu', v => v.replace(/\D/g, '').slice(0, 4));
+        filtro('acc-nombre', v => v.toUpperCase().replace(/[^\p{L}\p{N} .\-]/gu, ''));
+        filtro('ter-nombre', v => v.toUpperCase());
+        $('sig-onu').addEventListener('input', () => {
+            const a = ED.adr.find(x => x.onu === $('sig-onu').value.trim());
+            $('sig-clase').value = a ? a.clase : '';
+        });
+        document.addEventListener('input', e => { if (e.target.classList && e.target.classList.contains('campo-error')) e.target.classList.remove('campo-error'); }, true);
+        document.addEventListener('change', e => { if (e.target.classList && e.target.classList.contains('campo-error')) e.target.classList.remove('campo-error'); }, true);
+
+        edDestGrupos();
+        edDestRender();
+        edAdrRender();
+        edSigSelects();
+        edSigRender();
+        edAccRender();
+        edTerRender();
+        edContadores();
+
+        const falta = [];
+        if (!Array.isArray(window.UTI_TERMINALES_DATOS)) falta.push('terminales_datos.js');
+        if (!Array.isArray(window.UTI_DESTINOS_GRUPOS)) falta.push('destinos_datos.js');
+        if (!Array.isArray(window.UTI_ADR_DATOS)) falta.push('adr_datos.js');
+        if (!Array.isArray(window.UTI_SIGLAS_DATOS)) falta.push('siglas_datos.js');
+        if (!window.UTI_ACCESOS_DATOS) falta.push('accesos_datos.js');
+        if (falta.length) $('ed-login-err').textContent = 'Faltan archivos en WEB_cliente/datos: ' + falta.join(', ');
+    });
+    </script>
+
+    <!-- UTI-SECURITY-CONTEXTMENU -->
+    <script>
+    (function() {
+        // Bloqueo absoluto del botón derecho - se ejecuta en fase de captura
+        // para predominar sobre cualquier otro manejador de la página. (Regla 6)
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            return false;
+        }, true);
+        // Bloqueo adicional en fase de burbuja por compatibilidad
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            return false;
+        });
+    })();
+    </script>
+    <!-- /UTI-SECURITY-CONTEXTMENU -->
+</body>
+</html>
